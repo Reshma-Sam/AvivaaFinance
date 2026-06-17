@@ -5,6 +5,7 @@ import OurJourney from "../src/pages/OurJourny";
 import Apply from "../src/pages/Apply";
 import Dashboard from "../src/pages/Dashboard";
 import DashboardLogin from "../src/pages/DashboardLogin";
+import Leads from "../src/pages/Leads";
 import WhatsAppButton from "../src/components/WhatsappButton";
 
 export default function App() {
@@ -17,11 +18,13 @@ export default function App() {
           <Route path="/apply" element={<Apply />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/dashboard/login" element={<DashboardLogin />} />
+          <Route path="/dashboard/leads" element={<Leads />} />
         </Routes>
         <WhatsAppButton />
       </Router>
     </ReactLenis>
   );
 }
+
 
 

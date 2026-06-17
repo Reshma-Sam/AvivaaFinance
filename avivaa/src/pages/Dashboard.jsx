@@ -165,17 +165,21 @@ export default function Dashboard() {
     }
   };
 
+  // Only show completed applications (currentStep is 8 or undefined/not specified)
+  const completedLoans = loans.filter(l => l.currentStep === undefined || l.currentStep >= 8);
+  const incompleteLoans = loans.filter(l => l.currentStep !== undefined && l.currentStep < 8);
+
   // Calculate statistics
-  const totalApps = loans.length;
-  const pendingApps = loans.filter(l => l.status === "Pending").length;
-  const approvedApps = loans.filter(l => l.status === "Approved").length;
-  const rejectedApps = loans.filter(l => l.status === "Rejected").length;
-  const totalApprovedVolume = loans
+  const totalApps = completedLoans.length;
+  const pendingApps = completedLoans.filter(l => l.status === "Pending").length;
+  const approvedApps = completedLoans.filter(l => l.status === "Approved").length;
+  const rejectedApps = completedLoans.filter(l => l.status === "Rejected").length;
+  const totalApprovedVolume = completedLoans
     .filter(l => l.status === "Approved")
     .reduce((sum, curr) => sum + curr.loanAmount, 0);
 
   // Filtered list
-  const filteredLoans = loans.filter(loan => {
+  const filteredLoans = completedLoans.filter(loan => {
     const matchesSearch = 
       loan.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       loan.mobileNumber.includes(searchTerm) ||
@@ -235,6 +239,18 @@ export default function Dashboard() {
                 <p className="text-[10px] text-slate-500 uppercase tracking-widest">{adminUser.role}</p>
               </div>
             )}
+            <Link 
+              to="/dashboard/leads"
+              className="p-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl text-slate-400 hover:text-amber-400 transition-all cursor-pointer flex items-center gap-2 text-xs font-semibold"
+            >
+              <User size={16} /> 
+              <span className="hidden sm:inline">Incomplete Leads</span>
+              {incompleteLoans.length > 0 && (
+                <span className="h-4.5 w-4.5 bg-amber-500 text-slate-950 font-black rounded-full text-[9px] flex items-center justify-center animate-pulse">
+                  {incompleteLoans.length}
+                </span>
+              )}
+            </Link>
             <button 
               onClick={handleLogout}
               className="p-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-xl text-slate-400 hover:text-red-400 transition-all cursor-pointer flex items-center gap-2 text-xs font-semibold"
