@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { 
   Building2, Landmark, CheckCircle, AlertCircle, Clock, 
   Search, LogOut, FileText, ChevronRight, User, Phone, 
-  Download, Calendar, ShieldCheck, DollarSign, Loader2, X, Upload, Copy, Check
+  Download, Calendar, ShieldCheck, DollarSign, Loader2, X, Upload, Copy, Check, Trash2
 } from "lucide-react";
 import logo from "../assets/logo.jpeg";
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
@@ -21,6 +21,7 @@ export default function Dashboard() {
   const [uploadingPdf, setUploadingPdf] = useState(false);
   const [adminUser, setAdminUser] = useState(null);
   const [copiedId, setCopiedId] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
 
   useEffect(() => {
     // Check authentication
@@ -148,6 +149,35 @@ export default function Dashboard() {
     navigator.clipboard.writeText(downloadUrl);
     setCopiedId(loan._id);
     setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const handleDeleteLoan = async (loanId) => {
+    if (!window.confirm("Are you sure you want to permanently delete this application record? This action cannot be undone.")) {
+      return;
+    }
+
+    setDeletingId(loanId);
+    try {
+      const token = localStorage.getItem("avivaa_dashboard_token");
+      const response = await fetch(`${API_BASE_URL}/loans/${loanId}`, {
+        method: "DELETE",
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete application record");
+      }
+
+      setLoans(loans.filter(loan => loan._id !== loanId));
+      setSelectedLoan(null);
+      alert("Application record deleted successfully.");
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   const getWithdrawalStatusText = (loan) => {
@@ -826,31 +856,47 @@ export default function Dashboard() {
               </div>
 
               {/* Modal Actions Footer */}
-              <div className="p-6 border-t border-slate-800 bg-slate-900/60 backdrop-blur-md flex flex-col sm:flex-row gap-3 justify-end shrink-0">
-                {selectedLoan.status === "Pending" ? (
-                  <>
-                    <button
-                      onClick={() => handleUpdateStatus(selectedLoan._id, "Rejected")}
-                      disabled={updatingStatusId !== null}
-                      className="px-6 py-3 border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-400 font-bold rounded-xl text-xs transition-colors cursor-pointer flex items-center justify-center gap-1.5"
-                    >
-                      {updatingStatusId === selectedLoan._id ? <Loader2 size={14} className="animate-spin" /> : null}
-                      Decline Application
-                    </button>
-                    <button
-                      onClick={() => handleUpdateStatus(selectedLoan._id, "Approved")}
-                      disabled={updatingStatusId !== null}
-                      className="px-6 py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl text-xs shadow-lg shadow-emerald-500/10 hover:shadow-emerald-500/20 transition-all cursor-pointer flex items-center justify-center gap-1.5"
-                    >
-                      {updatingStatusId === selectedLoan._id ? <Loader2 size={14} className="animate-spin" /> : null}
-                      Approve & Disburse Loan
-                    </button>
-                  </>
-                ) : (
-                  <div className="text-slate-500 text-xs font-semibold flex items-center gap-2">
-                    <ShieldCheck size={16} className="text-slate-400" /> This application has been locked under audit decision: <span className={`uppercase font-black ${selectedLoan.status === 'Approved' ? 'text-emerald-400' : 'text-red-400'}`}>{selectedLoan.status}</span>
-                  </div>
-                )}
+              <div className="p-6 border-t border-slate-800 bg-slate-900/60 backdrop-blur-md flex flex-col sm:flex-row gap-4 justify-between items-center shrink-0">
+                <div>
+                  <button
+                    onClick={() => handleDeleteLoan(selectedLoan._id)}
+                    disabled={deletingId !== null}
+                    className="w-full sm:w-auto px-5 py-3 border border-red-500/30 bg-red-950/20 hover:bg-red-900/20 text-red-550 font-bold rounded-xl text-xs transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                  >
+                    {deletingId === selectedLoan._id ? (
+                      <Loader2 size={14} className="animate-spin" />
+                    ) : (
+                      <Trash2 size={14} />
+                    )}
+                    Delete Record
+                  </button>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto justify-end">
+                  {selectedLoan.status === "Pending" ? (
+                    <>
+                      <button
+                        onClick={() => handleUpdateStatus(selectedLoan._id, "Rejected")}
+                        disabled={updatingStatusId !== null}
+                        className="px-6 py-3 border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-400 font-bold rounded-xl text-xs transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                      >
+                        {updatingStatusId === selectedLoan._id ? <Loader2 size={14} className="animate-spin" /> : null}
+                        Decline Application
+                      </button>
+                      <button
+                        onClick={() => handleUpdateStatus(selectedLoan._id, "Approved")}
+                        disabled={updatingStatusId !== null}
+                        className="px-6 py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl text-xs shadow-lg shadow-emerald-500/10 hover:shadow-emerald-500/20 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                      >
+                        {updatingStatusId === selectedLoan._id ? <Loader2 size={14} className="animate-spin" /> : null}
+                        Approve & Disburse Loan
+                      </button>
+                    </>
+                  ) : (
+                    <div className="text-slate-500 text-xs font-semibold flex items-center gap-2">
+                      <ShieldCheck size={16} className="text-slate-400" /> This application has been locked under audit decision: <span className={`uppercase font-black ${selectedLoan.status === 'Approved' ? 'text-emerald-400' : 'text-red-400'}`}>{selectedLoan.status}</span>
+                    </div>
+                  )}
+                </div>
               </div>
             </motion.div>
           </div>

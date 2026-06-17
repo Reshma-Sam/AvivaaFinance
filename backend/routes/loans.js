@@ -88,6 +88,19 @@ router.put('/:id/status', auth, async (req, res) => {
   }
 });
 
+// Delete a loan application (Protected)
+router.delete('/:id', auth, async (req, res) => {
+  try {
+    const deletedLoan = await Loan.findByIdAndDelete(req.params.id);
+    if (!deletedLoan) {
+      return res.status(404).json({ message: 'Loan application not found' });
+    }
+    res.json({ success: true, message: 'Loan application deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Get status of loan application by mobile number (Public)
 router.get('/status/:mobileNumber', async (req, res) => {
   try {

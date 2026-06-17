@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { 
   Building2, Landmark, CheckCircle, AlertCircle, Clock, 
   Search, LogOut, FileText, ChevronRight, User, Phone, 
-  Download, Calendar, ShieldCheck, DollarSign, Loader2, X, ArrowLeft, MessageSquare, Copy, Check
+  Download, Calendar, ShieldCheck, DollarSign, Loader2, X, ArrowLeft, MessageSquare, Copy, Check, Trash2
 } from "lucide-react";
 import logo from "../assets/logo.jpeg";
 
@@ -19,6 +19,7 @@ export default function Leads() {
   const [selectedLead, setSelectedLead] = useState(null);
   const [adminUser, setAdminUser] = useState(null);
   const [copiedId, setCopiedId] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
 
   useEffect(() => {
     // Check authentication
@@ -70,6 +71,35 @@ export default function Leads() {
     navigator.clipboard.writeText(text);
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const handleDeleteLead = async (leadId) => {
+    if (!window.confirm("Are you sure you want to permanently delete this lead record? This action cannot be undone.")) {
+      return;
+    }
+
+    setDeletingId(leadId);
+    try {
+      const token = localStorage.getItem("avivaa_dashboard_token");
+      const response = await fetch(`${API_BASE_URL}/loans/${leadId}`, {
+        method: "DELETE",
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete lead record");
+      }
+
+      setLoans(loans.filter(loan => loan._id !== leadId));
+      setSelectedLead(null);
+      alert("Lead record deleted successfully.");
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   // Filter for incomplete/leads (currentStep < 8 and currentStep >= 2)
@@ -560,10 +590,24 @@ export default function Leads() {
               </div>
 
               {/* Modal Actions Footer */}
-              <div className="p-6 border-t border-slate-800 bg-slate-900/60 backdrop-blur-md flex justify-end shrink-0">
+              <div className="p-6 border-t border-slate-800 bg-slate-900/60 backdrop-blur-md flex flex-col sm:flex-row gap-4 justify-between items-center shrink-0">
+                <div>
+                  <button
+                    onClick={() => handleDeleteLead(selectedLead._id)}
+                    disabled={deletingId !== null}
+                    className="w-full sm:w-auto px-5 py-3 border border-red-500/30 bg-red-955/20 hover:bg-red-900/20 text-red-500 font-bold rounded-xl text-xs transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                  >
+                    {deletingId === selectedLead._id ? (
+                      <Loader2 size={14} className="animate-spin" />
+                    ) : (
+                      <Trash2 size={14} />
+                    )}
+                    Delete Lead
+                  </button>
+                </div>
                 <button
                   onClick={() => setSelectedLead(null)}
-                  className="px-6 py-2.5 bg-slate-850 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-bold text-slate-300 transition-colors"
+                  className="w-full sm:w-auto px-6 py-2.5 bg-slate-850 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-bold text-slate-300 transition-colors"
                 >
                   Close Profile
                 </button>
