@@ -9,6 +9,8 @@ import {
 import { Link, useNavigate } from "react-router-dom";
 import logo from "../assets/logo.jpeg";
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+
 // Stylized top Indian banks with simulated SVG logos for premium Awwwards look
 const INDIAN_BANKS = [
   { 
@@ -192,7 +194,7 @@ export default function Apply() {
 
     const fetchStatus = async () => {
       try {
-        const response = await fetch(`http://localhost:5000/api/loans/status/${mobile}`);
+        const response = await fetch(`${API_BASE_URL}/loans/status/${mobile}`);
         if (response.ok) {
           const loan = await response.json();
           setActiveDbLoan(loan);
@@ -245,7 +247,7 @@ export default function Apply() {
   const handleInitiateWithdrawal = async () => {
     if (!activeDbLoan) return;
     try {
-      const response = await fetch(`http://localhost:5000/api/loans/${activeDbLoan._id}/withdraw`, {
+      const response = await fetch(`${API_BASE_URL}/loans/${activeDbLoan._id}/withdraw`, {
         method: 'POST'
       });
       if (!response.ok) {
@@ -308,7 +310,7 @@ export default function Apply() {
     if (isSignUp) {
       setLoginError("Verifying mobile availability...");
       try {
-        const response = await fetch(`http://localhost:5000/api/loans/status/${mobile}`);
+        const response = await fetch(`${API_BASE_URL}/loans/status/${mobile}`);
         if (response.ok) {
           setLoginError("An account already exists for this mobile number. Please sign in instead.");
         } else {
@@ -325,7 +327,7 @@ export default function Apply() {
     } else {
       setLoginError("Checking secure session coordinates...");
       try {
-        const response = await fetch(`http://localhost:5000/api/loans/status/${mobile}`);
+        const response = await fetch(`${API_BASE_URL}/loans/status/${mobile}`);
         if (response.ok) {
           const loan = await response.json();
           
@@ -644,7 +646,7 @@ export default function Apply() {
         }
       };
 
-      const response = await fetch('http://localhost:5000/api/loans/apply', {
+      const response = await fetch(`${API_BASE_URL}/loans/apply`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -659,7 +661,7 @@ export default function Apply() {
 
       console.log('Loan application submitted to database:', data);
       
-      const statusRes = await fetch(`http://localhost:5000/api/loans/status/${mobile || "9876543210"}`);
+      const statusRes = await fetch(`${API_BASE_URL}/loans/status/${mobile || "9876543210"}`);
       if (statusRes.ok) {
         const loanObj = await statusRes.json();
         setActiveDbLoan(loanObj);

@@ -40,10 +40,17 @@ export const uploadToCloudinary = async (base64Data, folder = 'avivaa') => {
   }
 
   try {
-    const uploadResponse = await cloudinary.uploader.upload(base64Data, {
+    const isPdf = typeof base64Data === 'string' && base64Data.startsWith('data:application/pdf');
+    const options = {
       folder: folder,
-      resource_type: 'auto' // Supports automatic format detection for PDF and images
-    });
+      resource_type: isPdf ? 'raw' : 'auto'
+    };
+    
+    if (isPdf) {
+      options.public_id = `agreement_${Date.now()}.pdf`;
+    }
+
+    const uploadResponse = await cloudinary.uploader.upload(base64Data, options);
     return uploadResponse.secure_url;
   } catch (error) {
     console.error("Cloudinary upload failed, falling back to Base64:", error.message);

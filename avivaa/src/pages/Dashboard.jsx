@@ -7,6 +7,7 @@ import {
   Download, Calendar, ShieldCheck, DollarSign, Loader2, X, Upload
 } from "lucide-react";
 import logo from "../assets/logo.jpeg";
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -37,7 +38,7 @@ export default function Dashboard() {
   const fetchLoans = async (token) => {
     setLoading(true);
     try {
-      const response = await fetch("http://localhost:5000/api/loans", {
+      const response = await fetch(`${API_BASE_URL}/loans`, {
         headers: {
           "Authorization": `Bearer ${token}`
         }
@@ -64,7 +65,7 @@ export default function Dashboard() {
     setUpdatingStatusId(loanId);
     try {
       const token = localStorage.getItem("avivaa_dashboard_token");
-      const response = await fetch(`http://localhost:5000/api/loans/${loanId}/status`, {
+      const response = await fetch(`${API_BASE_URL}/loans/${loanId}/status`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -113,7 +114,7 @@ export default function Dashboard() {
       reader.onload = async () => {
         const base64Data = reader.result;
         const token = localStorage.getItem("avivaa_dashboard_token");
-        const response = await fetch(`http://localhost:5000/api/loans/${selectedLoan._id}/upload-pdf`, {
+        const response = await fetch(`${API_BASE_URL}/loans/${selectedLoan._id}/upload-pdf`, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",

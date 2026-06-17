@@ -28,6 +28,11 @@ app.use(cors({
 app.use('/api/auth', authRoutes);
 app.use('/api/loans', loanRoutes);
 
+// Welcome Route
+app.get('/', (req, res) => {
+  res.json({ message: 'Avivaa Finance API is running successfully!' });
+});
+
 // Health Check
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected' });

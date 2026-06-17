@@ -4,6 +4,8 @@ import { motion } from "motion/react";
 import { Lock, User, Eye, EyeOff, Loader2, AlertCircle } from "lucide-react";
 import logo from "../assets/logo.jpeg";
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+
 export default function DashboardLogin() {
   const navigate = useNavigate();
   const [emailOrUsername, setEmailOrUsername] = useState("");
@@ -18,7 +20,7 @@ export default function DashboardLogin() {
     setError("");
 
     try {
-      const response = await fetch("http://localhost:5000/api/auth/login", {
+      const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
