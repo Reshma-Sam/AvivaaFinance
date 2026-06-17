@@ -22,6 +22,13 @@ export default function Dashboard() {
   const [adminUser, setAdminUser] = useState(null);
   const [copiedId, setCopiedId] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
+  const [dialog, setDialog] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+    type: "info",
+    onConfirm: null,
+  });
 
   useEffect(() => {
     // Check authentication
@@ -88,7 +95,7 @@ export default function Dashboard() {
         setSelectedLoan(updated);
       }
     } catch (err) {
-      alert(err.message);
+      showAlert(err.message, "error");
     } finally {
       setUpdatingStatusId(null);
     }
@@ -105,7 +112,7 @@ export default function Dashboard() {
     if (!file) return;
 
     if (file.type !== "application/pdf") {
-      alert("Please upload a valid PDF file");
+      showAlert("Please upload a valid PDF file", "error");
       return;
     }
 
@@ -135,10 +142,10 @@ export default function Dashboard() {
         const updated = await response.json();
         setLoans(loans.map(loan => loan._id === selectedLoan._id ? updated : loan));
         setSelectedLoan(updated);
-        alert("PDF uploaded and linked to user successfully!");
+        showAlert("PDF uploaded and linked to user successfully!", "success");
       };
     } catch (err) {
-      alert(err.message);
+      showAlert(err.message, "error");
     } finally {
       setUploadingPdf(false);
     }
@@ -151,33 +158,55 @@ export default function Dashboard() {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const handleDeleteLoan = async (loanId) => {
-    if (!window.confirm("Are you sure you want to permanently delete this application record? This action cannot be undone.")) {
-      return;
-    }
+  const showAlert = (message, type = "info", title = "") => {
+    setDialog({
+      isOpen: true,
+      title: title || (type === "success" ? "Success" : type === "error" ? "Error" : "Notice"),
+      message,
+      type,
+      onConfirm: null
+    });
+  };
 
-    setDeletingId(loanId);
-    try {
-      const token = localStorage.getItem("avivaa_dashboard_token");
-      const response = await fetch(`${API_BASE_URL}/loans/${loanId}`, {
-        method: "DELETE",
-        headers: {
-          "Authorization": `Bearer ${token}`
+  const showConfirm = (title, message, onConfirm) => {
+    setDialog({
+      isOpen: true,
+      title,
+      message,
+      type: "confirm",
+      onConfirm
+    });
+  };
+
+  const handleDeleteLoan = (loanId) => {
+    showConfirm(
+      "Confirm Deletion",
+      "Are you sure you want to permanently delete this application record? This action cannot be undone and will delete all associated media files from Cloudinary storage.",
+      async () => {
+        setDeletingId(loanId);
+        try {
+          const token = localStorage.getItem("avivaa_dashboard_token");
+          const response = await fetch(`${API_BASE_URL}/loans/${loanId}`, {
+            method: "DELETE",
+            headers: {
+              "Authorization": `Bearer ${token}`
+            }
+          });
+
+          if (!response.ok) {
+            throw new Error("Failed to delete application record");
+          }
+
+          setLoans(loans.filter(loan => loan._id !== loanId));
+          setSelectedLoan(null);
+          showAlert("Application record and associated files deleted successfully.", "success");
+        } catch (err) {
+          showAlert(err.message, "error");
+        } finally {
+          setDeletingId(null);
         }
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to delete application record");
       }
-
-      setLoans(loans.filter(loan => loan._id !== loanId));
-      setSelectedLoan(null);
-      alert("Application record deleted successfully.");
-    } catch (err) {
-      alert(err.message);
-    } finally {
-      setDeletingId(null);
-    }
+    );
   };
 
   const getWithdrawalStatusText = (loan) => {
@@ -897,6 +926,78 @@ export default function Dashboard() {
                     </div>
                   )}
                 </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Custom Dialog Alert / Confirm */}
+      <AnimatePresence>
+        {dialog.isOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-md shadow-2xl p-6 overflow-hidden relative"
+            >
+              {/* Type Accent Bar or Icon */}
+              <div className="flex items-start gap-4">
+                <div className={`p-3 rounded-2xl shrink-0 ${
+                  dialog.type === 'success' ? 'bg-emerald-500/10 text-emerald-400' :
+                  dialog.type === 'error' ? 'bg-red-500/10 text-red-400' :
+                  dialog.type === 'confirm' ? 'bg-amber-500/10 text-amber-400' :
+                  'bg-cyan-500/10 text-cyan-400'
+                }`}>
+                  {dialog.type === 'success' && <CheckCircle size={24} />}
+                  {dialog.type === 'error' && <AlertCircle size={24} />}
+                  {dialog.type === 'confirm' && <Trash2 size={24} />}
+                  {dialog.type === 'info' && <FileText size={24} />}
+                </div>
+                
+                <div className="space-y-1.5 flex-1">
+                  <h3 className="text-base font-bold text-white leading-tight">
+                    {dialog.title}
+                  </h3>
+                  <p className="text-xs text-slate-400 leading-relaxed">
+                    {dialog.message}
+                  </p>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="mt-6 flex justify-end gap-3">
+                {dialog.type === 'confirm' ? (
+                  <>
+                    <button
+                      onClick={() => setDialog({ ...dialog, isOpen: false })}
+                      className="px-4 py-2.5 bg-slate-955 hover:bg-slate-850 border border-slate-800 rounded-xl text-xs font-bold text-slate-400 hover:text-white transition-colors cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={() => {
+                        setDialog({ ...dialog, isOpen: false });
+                        if (dialog.onConfirm) dialog.onConfirm();
+                      }}
+                      className="px-5 py-2.5 bg-red-500 hover:bg-red-400 text-slate-950 font-bold rounded-xl text-xs shadow-lg shadow-red-500/10 transition-colors cursor-pointer"
+                    >
+                      Confirm
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => setDialog({ ...dialog, isOpen: false })}
+                    className={`px-6 py-2.5 font-bold rounded-xl text-xs transition-colors cursor-pointer ${
+                      dialog.type === 'success' ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950' :
+                      dialog.type === 'error' ? 'bg-red-500 hover:bg-red-400 text-slate-950' :
+                      'bg-slate-850 hover:bg-slate-800 text-slate-200 border border-slate-800'
+                    }`}
+                  >
+                    OK
+                  </button>
+                )}
               </div>
             </motion.div>
           </div>
