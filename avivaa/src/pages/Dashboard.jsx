@@ -216,11 +216,11 @@ export default function Dashboard() {
     const now = Date.now();
     const elapsedMinutes = (now - startedTime) / (1000 * 60);
     
-    if (elapsedMinutes >= 1) {
-      return "Completed & Disbursed (1m elapsed)";
+    if (elapsedMinutes >= 30) {
+      return "Completed & Disbursed (30m elapsed)";
     } else {
-      const remainingSeconds = Math.max(0, Math.ceil(60 - (elapsedMinutes * 60)));
-      return `Withdrawal Timer Active (${remainingSeconds} sec remaining)`;
+      const remaining = Math.max(0, Math.ceil(30 - elapsedMinutes));
+      return `Withdrawal Timer Active (${remaining} min remaining)`;
     }
   };
 

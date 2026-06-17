@@ -120,6 +120,8 @@ export default function Apply() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loginError, setLoginError] = useState("");
   const [isSignUp, setIsSignUp] = useState(false);
 
@@ -221,7 +223,7 @@ export default function Apply() {
       const startedTime = new Date(activeDbLoan.withdrawalStartedAt).getTime();
       const now = Date.now();
       const elapsedSeconds = Math.floor((now - startedTime) / 1000);
-      const totalSeconds = 1 * 60; // 1 minute
+      const totalSeconds = 30 * 60; // 30 minutes
       const remaining = Math.max(0, totalSeconds - elapsedSeconds);
       return remaining;
     };
@@ -417,6 +419,10 @@ export default function Apply() {
       }
       if (password.length < 4) {
         setLoginError("Password must be at least 4 characters.");
+        return;
+      }
+      if (password !== confirmPassword) {
+        setLoginError("Passwords do not match.");
         return;
       }
     } else {
@@ -1075,6 +1081,31 @@ export default function Apply() {
                     </button>
                   </div>
                 </div>
+
+                {isSignUp && (
+                  <div className="space-y-1">
+                    <div className="flex justify-between items-center">
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Confirm Password *</label>
+                    </div>
+                    <div className="relative">
+                      <input 
+                        type={showConfirmPassword ? "text" : "password"}
+                        required
+                        placeholder="••••••••"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        className="input-field !py-2.5 !px-4 text-sm"
+                      />
+                      <button 
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-brand-navy cursor-pointer"
+                      >
+                        {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 {loginError && (
                   <div className="flex items-center gap-2 text-red-500 text-xs font-semibold p-2.5 bg-red-50 rounded-xl">
@@ -2330,7 +2361,7 @@ export default function Apply() {
 
                   <h2 className="text-3xl font-display font-black text-brand-navy mb-2">Processing Disbursal</h2>
                   <p className="text-brand-navy font-bold text-sm uppercase tracking-wider mb-6">
-                    Within 1 minute payment will Approve
+                    Within 30 minutes payment will Approve
                   </p>
 
                   <div className="bg-slate-900 text-white rounded-3xl p-8 mb-8 text-center relative overflow-hidden shadow-xl border border-slate-800">
@@ -2343,7 +2374,7 @@ export default function Apply() {
                     <div className="w-full h-2 bg-slate-800 rounded-full mt-6 overflow-hidden">
                       <div 
                         className="h-full bg-brand-green transition-all duration-1000 ease-linear"
-                        style={{ width: `${((1 * 60 - withdrawalTimeRemaining) / (1 * 60)) * 100}%` }}
+                        style={{ width: `${((30 * 60 - withdrawalTimeRemaining) / (30 * 60)) * 100}%` }}
                       />
                     </div>
                   </div>
