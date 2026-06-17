@@ -124,8 +124,8 @@ router.post('/:id/withdraw', async (req, res) => {
 });
 
 // Upload agreement PDF for a specific loan (Protected)
-// PDFs are stored as base64 directly in MongoDB — no Cloudinary needed.
-// Cloudinary blocks PDF delivery on free accounts (401/untrusted errors).
+// Flow: Admin uploads PDF → Cloudinary stores file → URL saved in MongoDB
+// User downloads via /pdf-proxy which fetches from Cloudinary server-side
 router.put('/:id/upload-pdf', auth, async (req, res) => {
   try {
     const { name, data } = req.body;
@@ -134,10 +134,12 @@ router.put('/:id/upload-pdf', auth, async (req, res) => {
       return res.status(400).json({ message: 'Please provide both PDF filename and base64 data' });
     }
 
-    // Store base64 PDF directly in MongoDB (no Cloudinary upload)
+    // Upload PDF to Cloudinary (proper file storage)
+    const cloudinaryUrl = await uploadToCloudinary(data, 'avivaa/agreements');
+
     const updatedLoan = await Loan.findByIdAndUpdate(
       req.params.id,
-      { adminPdf: { name, data } },
+      { adminPdf: { name, data: cloudinaryUrl } },
       { new: true }
     );
 
