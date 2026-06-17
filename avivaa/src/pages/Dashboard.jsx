@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { 
   Building2, Landmark, CheckCircle, AlertCircle, Clock, 
   Search, LogOut, FileText, ChevronRight, User, Phone, 
-  Download, Calendar, ShieldCheck, DollarSign, Loader2, X, Upload
+  Download, Calendar, ShieldCheck, DollarSign, Loader2, X, Upload, Copy, Check
 } from "lucide-react";
 import logo from "../assets/logo.jpeg";
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
@@ -20,6 +20,7 @@ export default function Dashboard() {
   const [updatingStatusId, setUpdatingStatusId] = useState(null);
   const [uploadingPdf, setUploadingPdf] = useState(false);
   const [adminUser, setAdminUser] = useState(null);
+  const [copiedId, setCopiedId] = useState(null);
 
   useEffect(() => {
     // Check authentication
@@ -140,6 +141,13 @@ export default function Dashboard() {
     } finally {
       setUploadingPdf(false);
     }
+  };
+
+  const handleCopyLink = (loan) => {
+    const downloadUrl = `${API_BASE_URL}/loans/${loan._id}/pdf-proxy`;
+    navigator.clipboard.writeText(downloadUrl);
+    setCopiedId(loan._id);
+    setTimeout(() => setCopiedId(null), 2000);
   };
 
   const getWithdrawalStatusText = (loan) => {
@@ -605,14 +613,26 @@ export default function Dashboard() {
                           </div>
                           <div className="flex items-center gap-2">
                             <a 
-                              href={selectedLoan.adminPdf.data}
-                              download={selectedLoan.adminPdf.name}
-                              target={selectedLoan.adminPdf.data.startsWith("http") ? "_blank" : undefined}
-                              rel={selectedLoan.adminPdf.data.startsWith("http") ? "noopener noreferrer" : undefined}
+                              href={`${API_BASE_URL}/loans/${selectedLoan._id}/pdf-proxy`}
+                              download={selectedLoan.adminPdf.name || "loan-agreement.pdf"}
                               className="py-1 px-2.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-[10px] font-bold text-slate-300 flex items-center gap-1 cursor-pointer"
                             >
                               <Download size={10} /> Download PDF
                             </a>
+                            <button
+                              onClick={() => handleCopyLink(selectedLoan)}
+                              className="py-1 px-2.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-[10px] font-bold text-slate-300 flex items-center gap-1 cursor-pointer"
+                            >
+                              {copiedId === selectedLoan._id ? (
+                                <>
+                                  <Check size={10} className="text-emerald-500" /> Copied!
+                                </>
+                              ) : (
+                                <>
+                                  <Copy size={10} /> Copy Link
+                                </>
+                              )}
+                            </button>
                             <label className="py-1 px-2.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-[10px] font-bold text-slate-300 flex items-center gap-1 cursor-pointer">
                               <Upload size={10} /> Replace
                               <input 
