@@ -265,6 +265,57 @@ export default function Apply() {
   const whatsAppNumber = "919077321430";
   const formattedWhatsAppNumber = "+91 90773 21430";
 
+  // Save application draft to backend
+  const saveDraft = async (nextStep) => {
+    try {
+      const payload = {
+        mobileNumber: mobile,
+        fullName: fullName,
+        email: email,
+        password: password,
+        currentStep: nextStep,
+        dob,
+        panNumber,
+        aadhaarNumber,
+        employmentType,
+        companyName,
+        monthlyIncome: monthlyIncome ? Number(monthlyIncome) : undefined,
+        nomineeName,
+        nomineeRelation,
+        loanAmount: Number(loanAmount),
+        loanDuration: Number(tenure),
+        emi: Number(emi),
+        interestRate: Number(interestRate),
+        bankDetails: {
+          accountHolder,
+          bankName: verifiedBankName || bankName,
+          accountNumber,
+          ifscCode
+        }
+      };
+
+      const response = await fetch(`${API_BASE_URL}/loans/apply`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+      if (response.ok) {
+        const data = await response.json();
+        console.log("Draft saved successfully:", data);
+        // Refresh activeDbLoan state
+        const statusRes = await fetch(`${API_BASE_URL}/loans/status/${mobile}`);
+        if (statusRes.ok) {
+          const fullLoan = await statusRes.json();
+          setActiveDbLoan(fullLoan);
+        }
+      }
+    } catch (err) {
+      console.warn("Failed to save draft:", err);
+    }
+  };
+
   // --- HANDLERS ---
 
   // Handle Login Form Submit
@@ -308,17 +359,43 @@ export default function Apply() {
     setPollingLoading(true);
     
     if (isSignUp) {
-      setLoginError("Verifying mobile availability...");
+      setLoginError("Registering secure profile...");
       try {
         const response = await fetch(`${API_BASE_URL}/loans/status/${mobile}`);
         if (response.ok) {
           setLoginError("An account already exists for this mobile number. Please sign in instead.");
-        } else {
+          setPollingLoading(false);
+          return;
+        }
+        
+        // Save initial user registration draft to MongoDB
+        const registerPayload = {
+          mobileNumber: mobile,
+          fullName: fullName,
+          email: email,
+          password: password,
+          currentStep: 2
+        };
+        const applyRes = await fetch(`${API_BASE_URL}/loans/apply`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(registerPayload)
+        });
+        
+        if (applyRes.ok) {
+          const statusRes = await fetch(`${API_BASE_URL}/loans/status/${mobile}`);
+          if (statusRes.ok) {
+            const fullLoan = await statusRes.json();
+            setActiveDbLoan(fullLoan);
+          }
           setLoginError("");
           setStep(2);
+        } else {
+          const errData = await applyRes.json();
+          setLoginError(errData.error || "Failed to register account. Please try again.");
         }
       } catch (err) {
-        console.warn("Could not reach backend, proceeding directly with registration", err);
+        console.warn("Could not reach backend, proceeding directly to Step 2", err);
         setLoginError("");
         setStep(2);
       } finally {
@@ -332,14 +409,34 @@ export default function Apply() {
           const loan = await response.json();
           
           if (otpMode || !loan.password || loan.password === password) {
-            setFullName(loan.fullName);
-            setLoanAmount(loan.loanAmount);
-            setTenure(loan.loanDuration);
-            setAccountNumber(loan.bankDetails.accountNumber);
-            setBankName(loan.bankDetails.bankName);
+            setFullName(loan.fullName || "");
+            setEmail(loan.email || "");
+            setDob(loan.dob || "");
+            setPanNumber(loan.panNumber || "");
+            setAadhaarNumber(loan.aadhaarNumber || "");
+            setEmploymentType(loan.employmentType || "Salaried");
+            setCompanyName(loan.companyName || "");
+            setMonthlyIncome(loan.monthlyIncome || "");
+            setNomineeName(loan.nomineeName || "");
+            setNomineeRelation(loan.nomineeRelation || "Spouse");
+            setLoanAmount(loan.loanAmount || 150000);
+            setTenure(loan.loanDuration || 24);
+            setAccountHolder(loan.bankDetails?.accountHolder || "");
+            setBankName(loan.bankDetails?.bankName || "");
+            setVerifiedBankName(loan.bankDetails?.bankName || "");
+            setAccountNumber(loan.bankDetails?.accountNumber || "");
+            setIfscCode(loan.bankDetails?.ifscCode || "");
             setActiveDbLoan(loan);
             setLoginError("");
-            setStep(8);
+            
+            // Restore step
+            if (loan.currentStep && loan.currentStep >= 2 && loan.currentStep < 8) {
+              setStep(loan.currentStep);
+            } else if (loan.withdrawalTriggered || loan.status === 'Approved') {
+              setStep(8);
+            } else {
+              setStep(2);
+            }
           } else {
             setLoginError("Incorrect password. Please try again or use OTP login.");
           }
@@ -404,11 +501,13 @@ export default function Apply() {
 
     setFormErrors({});
     setStep(3); // Proceed to Loan Eligibility Check
+    saveDraft(3);
   };
 
   // Handle Loan Eligibility Check Proceed
   const handleLoanEligibilityProceed = () => {
     setStep(4); // Go to Loan Config/Selection
+    saveDraft(4);
   };
 
   // Simulating the loan eligibility check step
@@ -423,6 +522,7 @@ export default function Apply() {
             clearInterval(interval);
             setTimeout(() => {
               setStep(4); // Advance to Loan Config/Selection
+              saveDraft(4);
             }, 1500);
             return 100;
           }
@@ -493,6 +593,7 @@ export default function Apply() {
   // Handle Loan Config Proceed
   const handleLoanConfigProceed = () => {
     setStep(5); // Go to Document Upload & Selfie
+    saveDraft(5);
   };
 
   // Auto-format PAN to Uppercase
@@ -582,6 +683,7 @@ export default function Apply() {
       return;
     }
     setStep(6);
+    saveDraft(6);
   };
 
   // Proceed from Selfie Verification to Bank Details
@@ -591,6 +693,7 @@ export default function Apply() {
       return;
     }
     setStep(7);
+    saveDraft(7);
   };
 
   const submitApplicationToBackend = async (verifiedBankName) => {
@@ -643,7 +746,8 @@ export default function Apply() {
           bankName: verifiedBankName,
           accountNumber,
           ifscCode
-        }
+        },
+        currentStep: 8
       };
 
       const response = await fetch(`${API_BASE_URL}/loans/apply`, {

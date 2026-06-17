@@ -10,49 +10,38 @@ const loanSchema = new mongoose.Schema({
     required: true
   },
   dob: {
-    type: String,
-    required: true
+    type: String
   },
   panNumber: {
-    type: String,
-    required: true
+    type: String
   },
   aadhaarNumber: {
-    type: String,
-    required: true
+    type: String
   },
   employmentType: {
-    type: String,
-    required: true
+    type: String
   },
   companyName: String,
   monthlyIncome: {
-    type: Number,
-    required: true
+    type: Number
   },
   nomineeName: {
-    type: String,
-    required: true
+    type: String
   },
   nomineeRelation: {
-    type: String,
-    required: true
+    type: String
   },
   loanAmount: {
-    type: Number,
-    required: true
+    type: Number
   },
   loanDuration: {
-    type: Number,
-    required: true
+    type: Number
   },
   emi: {
-    type: Number,
-    required: true
+    type: Number
   },
   interestRate: {
-    type: Number,
-    required: true
+    type: Number
   },
   kycFiles: {
     panCard: {
@@ -75,20 +64,16 @@ const loanSchema = new mongoose.Schema({
   },
   bankDetails: {
     accountHolder: {
-      type: String,
-      required: true
+      type: String
     },
     bankName: {
-      type: String,
-      required: true
+      type: String
     },
     accountNumber: {
-      type: String,
-      required: true
+      type: String
     },
     ifscCode: {
-      type: String,
-      required: true
+      type: String
     }
   },
   status: {
@@ -112,6 +97,10 @@ const loanSchema = new mongoose.Schema({
   },
   email: {
     type: String
+  },
+  currentStep: {
+    type: Number,
+    default: 2
   },
   createdAt: {
     type: Date,

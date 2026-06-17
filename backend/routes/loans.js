@@ -30,9 +30,18 @@ router.post('/apply', async (req, res) => {
       }
     }
     
-    // Create new loan application
-    const newLoan = new Loan(loanData);
-    const savedLoan = await newLoan.save();
+    // Find existing loan by mobileNumber and update, or create a new one
+    let savedLoan;
+    const existingLoan = await Loan.findOne({ mobileNumber: loanData.mobileNumber });
+    
+    if (existingLoan) {
+      // Merge new data
+      Object.assign(existingLoan, loanData);
+      savedLoan = await existingLoan.save();
+    } else {
+      const newLoan = new Loan(loanData);
+      savedLoan = await newLoan.save();
+    }
     
     res.status(201).json({
       success: true,
