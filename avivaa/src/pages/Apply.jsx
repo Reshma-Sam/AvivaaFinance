@@ -517,10 +517,17 @@ export default function Apply() {
             setLoginError("");
             
             // Restore step
-            if (loan.currentStep && loan.currentStep >= 2 && loan.currentStep < 8) {
-              setStep(loan.currentStep);
-            } else if (loan.withdrawalTriggered || loan.status === 'Approved') {
+            if (
+              loan.status === "Pending" ||
+              loan.status === "Approved" ||
+              loan.status === "Rejected" ||
+              loan.status === "Completed" ||
+              loan.withdrawalTriggered ||
+              loan.currentStep === 8
+            ) {
               setStep(8);
+            } else if (loan.currentStep && loan.currentStep >= 2 && loan.currentStep < 8) {
+              setStep(loan.currentStep);
             } else {
               setStep(2);
             }
