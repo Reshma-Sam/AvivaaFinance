@@ -4,7 +4,7 @@ import {
   ArrowLeft, ArrowRight, Lock, ShieldCheck, Check, Camera, 
   Upload, User, CreditCard, Building2, Landmark, CheckCircle, 
   AlertCircle, MessageCircle, Phone, Info, Eye, EyeOff, Loader2,
-  TrendingDown, Clock, Download
+  TrendingDown, Clock, Download, X
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import logo from "../assets/logo.jpeg";
@@ -161,6 +161,7 @@ export default function Apply() {
   const [aadhaarFrontFile, setAadhaarFrontFile] = useState(null);
   const [aadhaarBackFile, setAadhaarBackFile] = useState(null);
   const [nomineeDocFile, setNomineeDocFile] = useState(null); // NOMINEE ID PROOF
+  const [previewImage, setPreviewImage] = useState(null);
   
   const [cameraActive, setCameraActive] = useState(false);
   const [selfieImage, setSelfieImage] = useState(null);
@@ -287,6 +288,13 @@ export default function Apply() {
         loanDuration: Number(tenure),
         emi: Number(emi),
         interestRate: Number(interestRate),
+        kycFiles: {
+          panCard: panFile,
+          aadhaarFront: aadhaarFrontFile,
+          aadhaarBack: aadhaarBackFile,
+          nomineeDoc: nomineeDocFile,
+          selfieImage: selfieImage
+        },
         bankDetails: {
           accountHolder,
           bankName: verifiedBankName || bankName,
@@ -315,6 +323,79 @@ export default function Apply() {
     } catch (err) {
       console.warn("Failed to save draft:", err);
     }
+  };
+
+  // Save application draft to backend with a newly uploaded file override
+  const saveDraftWithFile = async (fieldName, fileObj) => {
+    try {
+      const payload = {
+        mobileNumber: mobile,
+        fullName: fullName,
+        email: email,
+        password: password,
+        currentStep: step,
+        dob,
+        panNumber,
+        aadhaarNumber,
+        employmentType,
+        companyName,
+        monthlyIncome: monthlyIncome ? Number(monthlyIncome) : undefined,
+        nomineeName,
+        nomineeRelation,
+        loanAmount: Number(loanAmount),
+        loanDuration: Number(tenure),
+        emi: Number(emi),
+        interestRate: Number(interestRate),
+        kycFiles: {
+          panCard: fieldName === 'panCard' ? fileObj : panFile,
+          aadhaarFront: fieldName === 'aadhaarFront' ? fileObj : aadhaarFrontFile,
+          aadhaarBack: fieldName === 'aadhaarBack' ? fileObj : aadhaarBackFile,
+          nomineeDoc: fieldName === 'nomineeDoc' ? fileObj : nomineeDocFile,
+          selfieImage: selfieImage
+        },
+        bankDetails: {
+          accountHolder,
+          bankName: verifiedBankName || bankName,
+          accountNumber,
+          ifscCode
+        }
+      };
+
+      const response = await fetch(`${API_BASE_URL}/loans/apply`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+      if (response.ok) {
+        console.log(`KYC file ${fieldName} saved successfully`);
+        // Refresh activeDbLoan state
+        const statusRes = await fetch(`${API_BASE_URL}/loans/status/${mobile}`);
+        if (statusRes.ok) {
+          const fullLoan = await statusRes.json();
+          setActiveDbLoan(fullLoan);
+        }
+      }
+    } catch (err) {
+      console.warn("Failed to save draft with file:", err);
+    }
+  };
+
+  const handleFileChange = (file, setter, fieldName) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const fileObj = {
+        name: file.name,
+        data: e.target.result
+      };
+      setter(fileObj);
+      
+      // Instantly upload this single file draft to backend
+      saveDraftWithFile(fieldName, fileObj);
+    };
+    reader.readAsDataURL(file);
   };
 
   // --- HANDLERS ---
@@ -427,6 +508,11 @@ export default function Apply() {
             setVerifiedBankName(loan.bankDetails?.bankName || "");
             setAccountNumber(loan.bankDetails?.accountNumber || "");
             setIfscCode(loan.bankDetails?.ifscCode || "");
+            setPanFile(loan.kycFiles?.panCard || null);
+            setAadhaarFrontFile(loan.kycFiles?.aadhaarFront || null);
+            setAadhaarBackFile(loan.kycFiles?.aadhaarBack || null);
+            setNomineeDocFile(loan.kycFiles?.nomineeDoc || null);
+            setSelfieImage(loan.kycFiles?.selfieImage || null);
             setActiveDbLoan(loan);
             setLoginError("");
             
@@ -1529,69 +1615,181 @@ export default function Apply() {
                   {/* PAN Upload */}
                   <div className="space-y-1">
                     <span className="text-xs font-bold uppercase tracking-wider text-slate-400">PAN Card Front Upload *</span>
-                    <label className="flex items-center gap-3 p-4 border border-dashed border-slate-200 hover:border-brand-green hover:bg-brand-green/5 rounded-2xl cursor-pointer transition-all">
-                      <Upload size={18} className="text-slate-400" />
-                      <span className="text-xs font-semibold text-slate-500 truncate">
-                        {panFile ? panFile.name : "Select or drag file (PDF, JPG, PNG)"}
-                      </span>
-                      <input 
-                        type="file" 
-                        accept=".pdf,.jpg,.jpeg,.png"
-                        onChange={(e) => setPanFile(e.target.files?.[0])}
-                        className="hidden" 
-                      />
-                    </label>
+                    <div className="flex flex-col gap-2">
+                      <label className="flex items-center gap-3 p-4 border border-dashed border-slate-200 hover:border-brand-green hover:bg-brand-green/5 rounded-2xl cursor-pointer transition-all">
+                        <Upload size={18} className="text-slate-400" />
+                        <span className="text-xs font-semibold text-slate-500 truncate flex-1">
+                          {panFile ? panFile.name : "Select or drag file (PDF, JPG, PNG)"}
+                        </span>
+                        <input 
+                          type="file" 
+                          accept=".pdf,.jpg,.jpeg,.png"
+                          onChange={(e) => handleFileChange(e.target.files?.[0], setPanFile, 'panCard')}
+                          className="hidden" 
+                        />
+                      </label>
+                      {panFile && panFile.data && (
+                        <div className="flex items-center justify-between bg-slate-50 border border-slate-100 rounded-xl p-2.5">
+                          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                            {panFile.data.startsWith("data:image/") || panFile.data.startsWith("http") ? (
+                              <img 
+                                src={panFile.data} 
+                                alt="PAN Preview" 
+                                className="w-10 h-10 rounded-lg object-cover border border-slate-100 cursor-pointer hover:opacity-85 transition-opacity"
+                                onClick={() => setPreviewImage({ title: "PAN Card Front", url: panFile.data })}
+                              />
+                            ) : (
+                              <div className="w-10 h-10 rounded-lg bg-slate-200 flex items-center justify-center text-slate-500 font-bold text-[10px] uppercase">
+                                PDF
+                              </div>
+                            )}
+                            <span className="text-xs font-bold text-slate-600 truncate flex-1">{panFile.name}</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setPreviewImage({ title: "PAN Card Front", url: panFile.data })}
+                            className="ml-2 text-[10px] font-extrabold uppercase tracking-wider text-brand-navy hover:text-brand-green transition-colors bg-white border border-slate-200 px-3 py-1.5 rounded-lg cursor-pointer"
+                          >
+                            Preview
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   {/* Aadhaar Front */}
                   <div className="space-y-1">
                     <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Aadhaar Card Front *</span>
-                    <label className="flex items-center gap-3 p-4 border border-dashed border-slate-200 hover:border-brand-green hover:bg-brand-green/5 rounded-2xl cursor-pointer transition-all">
-                      <Upload size={18} className="text-slate-400" />
-                      <span className="text-xs font-semibold text-slate-500 truncate">
-                        {aadhaarFrontFile ? aadhaarFrontFile.name : "Select Aadhaar Card Front Side"}
-                      </span>
-                      <input 
-                        type="file" 
-                        accept=".pdf,.jpg,.jpeg,.png"
-                        onChange={(e) => setAadhaarFrontFile(e.target.files?.[0])}
-                        className="hidden" 
-                      />
-                    </label>
+                    <div className="flex flex-col gap-2">
+                      <label className="flex items-center gap-3 p-4 border border-dashed border-slate-200 hover:border-brand-green hover:bg-brand-green/5 rounded-2xl cursor-pointer transition-all">
+                        <Upload size={18} className="text-slate-400" />
+                        <span className="text-xs font-semibold text-slate-500 truncate flex-1">
+                          {aadhaarFrontFile ? aadhaarFrontFile.name : "Select Aadhaar Card Front Side"}
+                        </span>
+                        <input 
+                          type="file" 
+                          accept=".pdf,.jpg,.jpeg,.png"
+                          onChange={(e) => handleFileChange(e.target.files?.[0], setAadhaarFrontFile, 'aadhaarFront')}
+                          className="hidden" 
+                        />
+                      </label>
+                      {aadhaarFrontFile && aadhaarFrontFile.data && (
+                        <div className="flex items-center justify-between bg-slate-50 border border-slate-100 rounded-xl p-2.5">
+                          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                            {aadhaarFrontFile.data.startsWith("data:image/") || aadhaarFrontFile.data.startsWith("http") ? (
+                              <img 
+                                src={aadhaarFrontFile.data} 
+                                alt="Aadhaar Front Preview" 
+                                className="w-10 h-10 rounded-lg object-cover border border-slate-100 cursor-pointer hover:opacity-85 transition-opacity"
+                                onClick={() => setPreviewImage({ title: "Aadhaar Card Front", url: aadhaarFrontFile.data })}
+                              />
+                            ) : (
+                              <div className="w-10 h-10 rounded-lg bg-slate-200 flex items-center justify-center text-slate-500 font-bold text-[10px] uppercase">
+                                PDF
+                              </div>
+                            )}
+                            <span className="text-xs font-bold text-slate-600 truncate flex-1">{aadhaarFrontFile.name}</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setPreviewImage({ title: "Aadhaar Card Front", url: aadhaarFrontFile.data })}
+                            className="ml-2 text-[10px] font-extrabold uppercase tracking-wider text-brand-navy hover:text-brand-green transition-colors bg-white border border-slate-200 px-3 py-1.5 rounded-lg cursor-pointer"
+                          >
+                            Preview
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   {/* Aadhaar Back */}
                   <div className="space-y-1">
                     <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Aadhaar Card Back *</span>
-                    <label className="flex items-center gap-3 p-4 border border-dashed border-slate-200 hover:border-brand-green hover:bg-brand-green/5 rounded-2xl cursor-pointer transition-all">
-                      <Upload size={18} className="text-slate-400" />
-                      <span className="text-xs font-semibold text-slate-500 truncate">
-                        {aadhaarBackFile ? aadhaarBackFile.name : "Select Aadhaar Card Back Side"}
-                      </span>
-                      <input 
-                        type="file" 
-                        accept=".pdf,.jpg,.jpeg,.png"
-                        onChange={(e) => setAadhaarBackFile(e.target.files?.[0])}
-                        className="hidden" 
-                      />
-                    </label>
+                    <div className="flex flex-col gap-2">
+                      <label className="flex items-center gap-3 p-4 border border-dashed border-slate-200 hover:border-brand-green hover:bg-brand-green/5 rounded-2xl cursor-pointer transition-all">
+                        <Upload size={18} className="text-slate-400" />
+                        <span className="text-xs font-semibold text-slate-500 truncate flex-1">
+                          {aadhaarBackFile ? aadhaarBackFile.name : "Select Aadhaar Card Back Side"}
+                        </span>
+                        <input 
+                          type="file" 
+                          accept=".pdf,.jpg,.jpeg,.png"
+                          onChange={(e) => handleFileChange(e.target.files?.[0], setAadhaarBackFile, 'aadhaarBack')}
+                          className="hidden" 
+                        />
+                      </label>
+                      {aadhaarBackFile && aadhaarBackFile.data && (
+                        <div className="flex items-center justify-between bg-slate-50 border border-slate-100 rounded-xl p-2.5">
+                          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                            {aadhaarBackFile.data.startsWith("data:image/") || aadhaarBackFile.data.startsWith("http") ? (
+                              <img 
+                                src={aadhaarBackFile.data} 
+                                alt="Aadhaar Back Preview" 
+                                className="w-10 h-10 rounded-lg object-cover border border-slate-100 cursor-pointer hover:opacity-85 transition-opacity"
+                                onClick={() => setPreviewImage({ title: "Aadhaar Card Back", url: aadhaarBackFile.data })}
+                              />
+                            ) : (
+                              <div className="w-10 h-10 rounded-lg bg-slate-200 flex items-center justify-center text-slate-500 font-bold text-[10px] uppercase">
+                                PDF
+                              </div>
+                            )}
+                            <span className="text-xs font-bold text-slate-600 truncate flex-1">{aadhaarBackFile.name}</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setPreviewImage({ title: "Aadhaar Card Back", url: aadhaarBackFile.data })}
+                            className="ml-2 text-[10px] font-extrabold uppercase tracking-wider text-brand-navy hover:text-brand-green transition-colors bg-white border border-slate-200 px-3 py-1.5 rounded-lg cursor-pointer"
+                          >
+                            Preview
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   {/* Nominee Document Upload */}
                   <div className="space-y-1">
                     <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Nominee ID Document (Aadhaar / PAN / Voter ID) *</span>
-                    <label className="flex items-center gap-3 p-4 border border-dashed border-slate-200 hover:border-brand-green hover:bg-brand-green/5 rounded-2xl cursor-pointer transition-all">
-                      <Upload size={18} className="text-slate-400" />
-                      <span className="text-xs font-semibold text-slate-500 truncate">
-                        {nomineeDocFile ? nomineeDocFile.name : "Select Nominee ID Proof"}
-                      </span>
-                      <input 
-                        type="file" 
-                        accept=".pdf,.jpg,.jpeg,.png"
-                        onChange={(e) => setNomineeDocFile(e.target.files?.[0])}
-                        className="hidden" 
-                      />
-                    </label>
+                    <div className="flex flex-col gap-2">
+                      <label className="flex items-center gap-3 p-4 border border-dashed border-slate-200 hover:border-brand-green hover:bg-brand-green/5 rounded-2xl cursor-pointer transition-all">
+                        <Upload size={18} className="text-slate-400" />
+                        <span className="text-xs font-semibold text-slate-500 truncate flex-1">
+                          {nomineeDocFile ? nomineeDocFile.name : "Select Nominee ID Proof"}
+                        </span>
+                        <input 
+                          type="file" 
+                          accept=".pdf,.jpg,.jpeg,.png"
+                          onChange={(e) => handleFileChange(e.target.files?.[0], setNomineeDocFile, 'nomineeDoc')}
+                          className="hidden" 
+                        />
+                      </label>
+                      {nomineeDocFile && nomineeDocFile.data && (
+                        <div className="flex items-center justify-between bg-slate-50 border border-slate-100 rounded-xl p-2.5">
+                          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                            {nomineeDocFile.data.startsWith("data:image/") || nomineeDocFile.data.startsWith("http") ? (
+                              <img 
+                                src={nomineeDocFile.data} 
+                                alt="Nominee Doc Preview" 
+                                className="w-10 h-10 rounded-lg object-cover border border-slate-100 cursor-pointer hover:opacity-85 transition-opacity"
+                                onClick={() => setPreviewImage({ title: "Nominee ID Document", url: nomineeDocFile.data })}
+                              />
+                            ) : (
+                              <div className="w-10 h-10 rounded-lg bg-slate-200 flex items-center justify-center text-slate-500 font-bold text-[10px] uppercase">
+                                PDF
+                              </div>
+                            )}
+                            <span className="text-xs font-bold text-slate-600 truncate flex-1">{nomineeDocFile.name}</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setPreviewImage({ title: "Nominee ID Document", url: nomineeDocFile.data })}
+                            className="ml-2 text-[10px] font-extrabold uppercase tracking-wider text-brand-navy hover:text-brand-green transition-colors bg-white border border-slate-200 px-3 py-1.5 rounded-lg cursor-pointer"
+                          >
+                            Preview
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -2266,6 +2464,39 @@ export default function Apply() {
           </div>
         </div>
       </footer>
+      {/* Lightbox Image Preview Modal */}
+      {previewImage && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm">
+          <div className="relative bg-white rounded-3xl p-5 max-w-2xl w-full flex flex-col shadow-2xl border border-slate-100 max-h-[90vh]">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <span className="text-sm font-bold text-brand-navy">{previewImage.title}</span>
+              <button 
+                type="button"
+                onClick={() => setPreviewImage(null)}
+                className="p-1 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-all cursor-pointer"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-hidden flex items-center justify-center p-2 min-h-0 mt-4">
+              <img 
+                src={previewImage.url} 
+                alt={previewImage.title} 
+                className="max-w-full max-h-[60vh] object-contain rounded-2xl shadow-md"
+              />
+            </div>
+            <div className="flex justify-end gap-3 mt-4 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setPreviewImage(null)}
+                className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-all cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
