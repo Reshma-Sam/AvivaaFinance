@@ -723,7 +723,7 @@ export default function Apply() {
     const progressPercent = ((step - 2) / 5) * 100; // Step 2 to 7 maps to 0% to 100%
     
     return (
-      <div className="w-full bg-slate-100 py-4 px-6 border-b border-slate-200 shrink-0">
+      <div className="w-full bg-slate-100 py-2.5 px-4 md:py-4 md:px-6 border-b border-slate-200 shrink-0">
         <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
           <button 
             onClick={() => {
@@ -759,7 +759,7 @@ export default function Apply() {
   return (
     <div className="h-[100dvh] bg-slate-50 flex flex-col font-sans selection:bg-brand-green selection:text-white overflow-hidden">
       {/* Brand Header */}
-      <header className="bg-white border-b border-slate-100 py-4 px-6 sticky top-0 z-40 shadow-sm flex items-center justify-between shrink-0">
+      <header className="bg-white border-b border-slate-100 py-2.5 px-4 md:py-4 md:px-6 sticky top-0 z-40 shadow-sm flex items-center justify-between shrink-0">
         <div className="max-w-7xl mx-auto w-full flex items-center justify-between">
           <Link to="/" className="flex items-center gap-3 group">
             <div className="w-10 h-10 rounded-xl overflow-hidden border border-slate-100 flex items-center justify-center">
@@ -777,7 +777,7 @@ export default function Apply() {
 
       {renderProgressHeader()}
 
-      <main className="flex-1 flex items-center justify-center p-3 md:p-8 relative overflow-hidden h-full">
+      <main className="flex-1 min-h-0 flex items-center justify-center p-2.5 md:p-8 relative overflow-hidden">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-brand-green/5 rounded-full blur-[120px] -z-10 pointer-events-none" />
         
         <AnimatePresence mode="wait">
@@ -1136,7 +1136,7 @@ export default function Apply() {
               <div className="relative w-32 h-32 mx-auto mb-8">
                 {/* Outer spin rings */}
                 <div className="absolute inset-0 rounded-full border-4 border-slate-100" />
-                <svg className="absolute inset-0 w-full h-full transform -rotate-90">
+                <svg className="absolute inset-0 w-full h-full transform -rotate-90" viewBox="0 0 128 128">
                   <circle
                     cx="64"
                     cy="64"
@@ -1820,7 +1820,7 @@ export default function Apply() {
               
               <div className="relative w-36 h-36 mx-auto mb-8 flex items-center justify-center">
                 {/* SVG circular track with gradient animation */}
-                <svg className="absolute inset-0 w-full h-full transform -rotate-90">
+                <svg className="absolute inset-0 w-full h-full transform -rotate-90" viewBox="0 0 144 144">
                   <defs>
                     <linearGradient id="glowGradient" x1="0%" y1="0%" x2="100%" y2="100%">
                       <stop offset="0%" stopColor="#26892C" />
@@ -2127,7 +2127,7 @@ export default function Apply() {
       </main>
 
       {/* Small Legal Footer */}
-      <footer className="bg-white border-t border-slate-100 py-6 px-6 text-center text-[10px] text-slate-400">
+      <footer className="hidden md:block bg-white border-t border-slate-100 py-6 px-6 text-center text-[10px] text-slate-400 shrink-0">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <p>© {new Date().getFullYear()} Avivaa Finance (Avivaa FinTech Private Limited). All rights reserved.</p>
           <div className="flex items-center gap-4 font-bold uppercase tracking-wider">
