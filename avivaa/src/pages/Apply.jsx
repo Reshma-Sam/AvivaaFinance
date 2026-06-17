@@ -183,6 +183,7 @@ export default function Apply() {
   const [isSubmittingApplication, setIsSubmittingApplication] = useState(false);
   const [submitProgress, setSubmitProgress] = useState(0);
   const [submitStatusText, setSubmitStatusText] = useState("Registering Secure Disbursal Channel...");
+  const [submitError, setSubmitError] = useState(null);
   
   const [activeDbLoan, setActiveDbLoan] = useState(null);
   const [withdrawalTimeRemaining, setWithdrawalTimeRemaining] = useState(0);
@@ -697,6 +698,7 @@ export default function Apply() {
   };
 
   const submitApplicationToBackend = async (verifiedBankName) => {
+    setSubmitError(null);
     try {
       setSubmitStatusText("Encoding document payloads...");
       
@@ -772,6 +774,7 @@ export default function Apply() {
       }
     } catch (error) {
       console.error('Backend submission error:', error);
+      setSubmitError(error.message || "Network timeout or connection error. Please try again.");
     }
   };
 
@@ -861,7 +864,7 @@ export default function Apply() {
   };
 
   return (
-    <div className="h-[100dvh] bg-slate-50 flex flex-col font-sans selection:bg-brand-green selection:text-white overflow-hidden">
+    <div className="min-h-screen md:h-auto h-[100dvh] bg-slate-50 flex flex-col font-sans selection:bg-brand-green selection:text-white overflow-hidden md:overflow-y-auto">
       {/* Brand Header */}
       <header className="bg-white border-b border-slate-100 py-2.5 px-4 md:py-4 md:px-6 sticky top-0 z-40 shadow-sm flex items-center justify-between shrink-0">
         <div className="max-w-7xl mx-auto w-full flex items-center justify-between">
@@ -881,7 +884,7 @@ export default function Apply() {
 
       {renderProgressHeader()}
 
-      <main className="flex-1 min-h-0 flex items-center justify-center p-2.5 md:p-8 relative overflow-hidden">
+      <main className="flex-1 min-h-0 flex items-center justify-center p-2.5 md:p-8 relative overflow-hidden md:overflow-visible">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-brand-green/5 rounded-full blur-[120px] -z-10 pointer-events-none" />
         
         <AnimatePresence mode="wait">
@@ -893,7 +896,7 @@ export default function Apply() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -30 }}
               transition={{ duration: 0.4 }}
-              className="w-full max-w-md bg-white rounded-3xl shadow-xl border border-slate-100 p-5 md:p-6 max-h-full overflow-y-auto flex flex-col scrollbar-thin"
+              className="w-full max-w-md bg-white rounded-3xl shadow-xl border border-slate-100 p-5 md:p-6 max-h-full md:max-h-none overflow-y-auto md:overflow-visible flex flex-col scrollbar-thin"
               data-lenis-prevent
             >
               <div className="text-center mb-4">
@@ -1060,7 +1063,7 @@ export default function Apply() {
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -30 }}
-              className="w-full max-w-2xl bg-white rounded-3xl shadow-xl border border-slate-100 p-5 md:p-8 max-h-full overflow-y-auto scrollbar-thin flex flex-col"
+              className="w-full max-w-2xl bg-white rounded-3xl shadow-xl border border-slate-100 p-5 md:p-8 max-h-full md:max-h-none overflow-y-auto md:overflow-visible scrollbar-thin flex flex-col"
               data-lenis-prevent
             >
               <div className="text-center mb-8">
@@ -1234,7 +1237,7 @@ export default function Apply() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-md bg-white rounded-3xl shadow-xl border border-slate-100 p-5 md:p-8 text-center max-h-full overflow-y-auto scrollbar-thin flex flex-col"
+              className="w-full max-w-md bg-white rounded-3xl shadow-xl border border-slate-100 p-5 md:p-8 text-center max-h-full md:max-h-none overflow-y-auto md:overflow-visible scrollbar-thin flex flex-col"
               data-lenis-prevent
             >
               <div className="relative w-32 h-32 mx-auto mb-8">
@@ -1300,7 +1303,7 @@ export default function Apply() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-4xl bg-white rounded-3xl shadow-xl border border-slate-100 max-h-full overflow-y-auto scrollbar-thin flex flex-col"
+              className="w-full max-w-4xl bg-white rounded-3xl shadow-xl border border-slate-100 max-h-full md:max-h-none overflow-y-auto md:overflow-visible scrollbar-thin flex flex-col"
               data-lenis-prevent
             >
               {/* ── DESKTOP: Side-by-side ── MOBILE: Single column ── */}
@@ -1515,7 +1518,7 @@ export default function Apply() {
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -30 }}
-              className="w-full max-w-2xl bg-white rounded-3xl shadow-xl border border-slate-100 p-5 md:p-8 flex flex-col max-h-full overflow-y-auto scrollbar-thin"
+              className="w-full max-w-2xl bg-white rounded-3xl shadow-xl border border-slate-100 p-5 md:p-8 flex flex-col max-h-full md:max-h-none overflow-y-auto md:overflow-visible scrollbar-thin"
               data-lenis-prevent
             >
               <div>
@@ -1627,7 +1630,7 @@ export default function Apply() {
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -30 }}
-              className="w-full max-w-xl bg-white rounded-3xl shadow-xl border border-slate-100 p-5 md:p-8 flex flex-col items-center text-center max-h-full overflow-y-auto scrollbar-thin"
+              className="w-full max-w-xl bg-white rounded-3xl shadow-xl border border-slate-100 p-5 md:p-8 flex flex-col items-center text-center max-h-full md:max-h-none overflow-y-auto md:overflow-visible scrollbar-thin"
               data-lenis-prevent
             >
               <div className="w-full">
@@ -1736,7 +1739,7 @@ export default function Apply() {
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -30 }}
-              className="w-full max-w-xl bg-white rounded-3xl shadow-xl border border-slate-100 p-5 md:p-8 max-h-full overflow-y-auto scrollbar-thin flex flex-col"
+              className="w-full max-w-xl bg-white rounded-3xl shadow-xl border border-slate-100 p-5 md:p-8 max-h-full md:max-h-none overflow-y-auto md:overflow-visible scrollbar-thin flex flex-col"
               data-lenis-prevent
             >
               <div className="text-center mb-8">
@@ -1916,7 +1919,7 @@ export default function Apply() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-md bg-white rounded-3xl shadow-2xl border border-slate-100 p-5 md:p-8 text-center relative overflow-hidden max-h-full overflow-y-auto scrollbar-thin"
+              className="w-full max-w-md bg-white rounded-3xl shadow-2xl border border-slate-100 p-5 md:p-8 text-center relative overflow-hidden max-h-full md:max-h-none overflow-y-auto md:overflow-visible scrollbar-thin"
               data-lenis-prevent
             >
               {/* Outer pulsing glow circle */}
@@ -2024,15 +2027,37 @@ export default function Apply() {
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
-              className="w-full max-w-xl bg-white rounded-3xl shadow-xl border border-slate-100 p-5 md:p-10 text-center relative overflow-hidden max-h-full overflow-y-auto scrollbar-thin flex flex-col"
+              className="w-full max-w-xl bg-white rounded-3xl shadow-xl border border-slate-100 p-5 md:p-10 text-center relative overflow-hidden max-h-full md:max-h-none overflow-y-auto md:overflow-visible scrollbar-thin flex flex-col"
               data-lenis-prevent
             >
               <div className="absolute top-0 left-0 right-0 h-2.5 bg-brand-green" />
 
               {!activeDbLoan ? (
                 <div className="py-12 flex flex-col items-center justify-center gap-4">
-                  <Loader2 size={40} className="text-brand-green animate-spin" />
-                  <p className="text-slate-500 font-bold text-xs uppercase tracking-wider">Synchronizing secure application ledger...</p>
+                  {submitError ? (
+                    <>
+                      <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center text-red-500 mb-2">
+                        <AlertCircle size={36} />
+                      </div>
+                      <h3 className="text-lg font-bold text-brand-navy">Submission Delayed</h3>
+                      <p className="text-slate-500 text-xs max-w-sm leading-relaxed">{submitError}</p>
+                      <button
+                        onClick={() => {
+                          setSubmitError(null);
+                          setStep(7);
+                          setIsSubmittingApplication(false);
+                        }}
+                        className="mt-4 px-6 py-2.5 bg-brand-navy hover:bg-brand-navy/90 text-white rounded-xl font-bold text-xs transition-all active:scale-95 cursor-pointer"
+                      >
+                        Go Back & Resubmit
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <Loader2 size={40} className="text-brand-green animate-spin" />
+                      <p className="text-slate-500 font-bold text-xs uppercase tracking-wider">Synchronizing secure application ledger...</p>
+                    </>
+                  )}
                 </div>
               ) : activeDbLoan.status === "Pending" ? (
                 // --- CASE A: PENDING STATUS ---
