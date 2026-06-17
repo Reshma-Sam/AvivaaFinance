@@ -534,13 +534,14 @@ export default function Apply() {
           } else {
             setLoginError("Incorrect password. Please try again or use OTP login.");
           }
+        } else if (response.status === 404) {
+          setLoginError("No application found with this mobile number. Please check the number or sign up.");
         } else {
-          setLoginError("No application found with this mobile number. Please sign up to create a new account.");
+          setLoginError("Secure server connection issue. Please check back shortly.");
         }
       } catch (err) {
-        console.warn("Could not check active loan status, proceeding as new application:", err);
-        setLoginError("");
-        setStep(2);
+        console.warn("Could not check active loan status:", err);
+        setLoginError("Unable to connect to the secure server. Please verify your internet connection and try again.");
       } finally {
         setPollingLoading(false);
       }
@@ -797,6 +798,7 @@ export default function Apply() {
       
       const fileToBase64 = (file) => {
         if (!file) return null;
+        if (file.data) return file;
         return new Promise((resolve, reject) => {
           const reader = new FileReader();
           reader.readAsDataURL(file);
