@@ -242,6 +242,7 @@ export default function Dashboard() {
     const matchesSearch = 
       loan.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       loan.mobileNumber.includes(searchTerm) ||
+      (loan.loanId && loan.loanId.toLowerCase().includes(searchTerm.toLowerCase())) ||
       loan.panNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
       loan.aadhaarNumber.includes(searchTerm);
     
@@ -439,7 +440,14 @@ export default function Dashboard() {
                       className="hover:bg-slate-900/30 transition-colors cursor-pointer group"
                     >
                       <td className="py-4 px-6">
-                        <div className="font-bold text-sm text-slate-200">{loan.fullName}</div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-sm text-slate-200">{loan.fullName}</span>
+                          {loan.loanId && (
+                            <span className="px-1.5 py-0.5 text-[9px] font-mono font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded">
+                              {loan.loanId}
+                            </span>
+                          )}
+                        </div>
                         <div className="text-[11px] text-slate-500 flex items-center gap-1.5 mt-0.5">
                           <Phone size={10} /> {loan.mobileNumber}
                         </div>
@@ -489,7 +497,14 @@ export default function Dashboard() {
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <div className="font-bold text-base text-slate-200">{loan.fullName}</div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <div className="font-bold text-base text-slate-200">{loan.fullName}</div>
+                        {loan.loanId && (
+                          <span className="px-1.5 py-0.5 text-[9px] font-mono font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded">
+                            {loan.loanId}
+                          </span>
+                        )}
+                      </div>
                       <div className="text-xs text-slate-500 flex items-center gap-1.5 mt-1 font-mono">
                         <Phone size={12} /> {loan.mobileNumber}
                       </div>
@@ -549,7 +564,14 @@ export default function Dashboard() {
                       {selectedLoan.status}
                     </span>
                   </div>
-                  <p className="text-slate-500 text-[11px] mt-0.5 font-mono">ID: {selectedLoan._id}</p>
+                  <div className="flex flex-wrap items-center gap-2 mt-1">
+                    {selectedLoan.loanId && (
+                      <span className="px-2 py-0.5 text-[10px] font-mono font-bold text-emerald-450 bg-emerald-500/10 border border-emerald-500/20 rounded">
+                        LOAN ID: {selectedLoan.loanId}
+                      </span>
+                    )}
+                    <span className="text-slate-500 text-[10px] font-mono">System ID: {selectedLoan._id}</span>
+                  </div>
                 </div>
                 <button 
                   onClick={() => setSelectedLoan(null)}

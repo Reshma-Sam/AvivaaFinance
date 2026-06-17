@@ -6,6 +6,7 @@ import authRoutes from './routes/auth.js';
 import loanRoutes from './routes/loans.js';
 import bcrypt from 'bcryptjs';
 import User from './models/User.js';
+import Loan from './models/Loan.js';
 
 dotenv.config();
 
@@ -67,6 +68,24 @@ const seedAdminUser = async () => {
   }
 };
 
+const migrateLoansWithId = async () => {
+  try {
+    const loansWithoutId = await Loan.find({ loanId: { $exists: false } });
+    if (loansWithoutId.length > 0) {
+      console.log(`Found ${loansWithoutId.length} loans without a Loan ID. Migrating...`);
+      for (const loan of loansWithoutId) {
+        loan.loanId = `AV-${Math.floor(100000 + Math.random() * 900000)}`;
+        await loan.save();
+      }
+      console.log('Migration of Loan IDs completed successfully.');
+    } else {
+      console.log('All loan documents have a Loan ID.');
+    }
+  } catch (err) {
+    console.error('Error migrating Loan IDs:', err.message);
+  }
+};
+
 // MongoDB Connection
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://avivafinance398_db_user:1nOMziMVK6k9zAT0@cluster0.s4ra7du.mongodb.net/avivaa?appName=Cluster0';
 const LOCAL_MONGODB_URI = 'mongodb://127.0.0.1:27017/avivaa';
@@ -83,6 +102,7 @@ const connectDB = async () => {
     await mongoose.connect(MONGODB_URI);
     console.log('Successfully connected to MongoDB Atlas Cluster');
     await seedAdminUser();
+    await migrateLoansWithId();
     startServer();
   } catch (err) {
     console.error('MongoDB Atlas connection failed:', err.message);
@@ -91,6 +111,7 @@ const connectDB = async () => {
       await mongoose.connect(LOCAL_MONGODB_URI);
       console.log('Successfully connected to local MongoDB instance');
       await seedAdminUser();
+      await migrateLoansWithId();
       startServer();
     } catch (localErr) {
       console.error('\n========================================================================');

@@ -138,7 +138,8 @@ export default function Leads() {
     const nameMatch = lead.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) || false;
     const phoneMatch = lead.mobileNumber?.includes(searchTerm) || false;
     const emailMatch = lead.email?.toLowerCase().includes(searchTerm.toLowerCase()) || false;
-    return nameMatch || phoneMatch || emailMatch;
+    const idMatch = lead.loanId?.toLowerCase().includes(searchTerm.toLowerCase()) || false;
+    return nameMatch || phoneMatch || emailMatch || idMatch;
   });
 
   const getStepName = (stepNum) => {
@@ -282,7 +283,14 @@ export default function Leads() {
                       className="hover:bg-slate-900/30 transition-colors cursor-pointer group"
                     >
                       <td className="py-4 px-6">
-                        <div className="font-bold text-sm text-slate-200">{lead.fullName || "Unnamed User"}</div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-sm text-slate-200">{lead.fullName || "Unnamed User"}</span>
+                          {lead.loanId && (
+                            <span className="px-1.5 py-0.5 text-[9px] font-mono font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded">
+                              {lead.loanId}
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="py-4 px-6 text-sm font-bold text-slate-300 font-mono">
                         {lead.mobileNumber}
@@ -325,7 +333,14 @@ export default function Leads() {
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <div className="font-bold text-base text-slate-200">{lead.fullName || "Unnamed User"}</div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <div className="font-bold text-base text-slate-200">{lead.fullName || "Unnamed User"}</div>
+                        {lead.loanId && (
+                          <span className="px-1.5 py-0.5 text-[9px] font-mono font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded">
+                            {lead.loanId}
+                          </span>
+                        )}
+                      </div>
                       <div className="text-xs text-slate-500 flex items-center gap-1.5 mt-1 font-mono">
                         <Phone size={12} /> {lead.mobileNumber}
                       </div>
@@ -377,7 +392,14 @@ export default function Leads() {
                       {getStepName(selectedLead.currentStep)}
                     </span>
                   </div>
-                  <p className="text-slate-500 text-[11px] mt-0.5 font-mono">Lead ID: {selectedLead._id}</p>
+                  <div className="flex flex-wrap items-center gap-2 mt-1">
+                    {selectedLead.loanId && (
+                      <span className="px-2 py-0.5 text-[10px] font-mono font-bold text-amber-450 bg-amber-500/10 border border-amber-500/20 rounded">
+                        LOAN ID: {selectedLead.loanId}
+                      </span>
+                    )}
+                    <span className="text-slate-500 text-[10px] font-mono">System ID: {selectedLead._id}</span>
+                  </div>
                 </div>
                 <button 
                   onClick={() => setSelectedLead(null)}

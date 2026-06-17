@@ -1,6 +1,11 @@
 import mongoose from 'mongoose';
 
 const loanSchema = new mongoose.Schema({
+  loanId: {
+    type: String,
+    unique: true,
+    sparse: true // sparse allows existing null/undefined values without duplicate key errors
+  },
   mobileNumber: {
     type: String,
     required: true
@@ -106,6 +111,13 @@ const loanSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   }
+});
+
+loanSchema.pre('save', function (next) {
+  if (!this.loanId) {
+    this.loanId = `AV-${Math.floor(100000 + Math.random() * 900000)}`;
+  }
+  next();
 });
 
 export default mongoose.model('Loan', loanSchema);

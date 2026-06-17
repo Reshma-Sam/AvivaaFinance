@@ -963,8 +963,16 @@ export default function Apply() {
               Avivaa <span className="text-brand-green">Finance</span>
             </span>
           </Link>
-          <div className="flex items-center gap-2 text-xs font-bold text-slate-500 bg-slate-100 px-3 py-1.5 rounded-full">
-            <ShieldCheck size={14} className="text-brand-green" /> 256-Bit SSL Encrypted
+          <div className="flex items-center gap-3">
+            {activeDbLoan && activeDbLoan.loanId && (
+              <div className="flex items-center gap-1.5 text-xs font-mono font-bold text-brand-navy bg-brand-green/15 border border-brand-green/20 px-3 py-1.5 rounded-full">
+                <span className="w-1.5 h-1.5 rounded-full bg-brand-green" />
+                ID: {activeDbLoan.loanId}
+              </div>
+            )}
+            <div className="flex items-center gap-2 text-xs font-bold text-slate-500 bg-slate-100 px-3 py-1.5 rounded-full">
+              <ShieldCheck size={14} className="text-brand-green" /> 256-Bit SSL Encrypted
+            </div>
           </div>
         </div>
       </header>
@@ -2197,6 +2205,15 @@ export default function Apply() {
               data-lenis-prevent
             >
               <div className="absolute top-0 left-0 right-0 h-2.5 bg-brand-green" />
+
+              {activeDbLoan && activeDbLoan.loanId && (
+                <div className="mt-2 mb-4 flex justify-center shrink-0">
+                  <div className="bg-brand-green/10 border border-brand-green/20 text-brand-navy px-4 py-1.5 rounded-full text-xs font-mono font-bold tracking-wider flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-brand-green animate-pulse" />
+                    LOAN ID: {activeDbLoan.loanId}
+                  </div>
+                </div>
+              )}
 
               {!activeDbLoan ? (
                 <div className="py-12 flex flex-col items-center justify-center gap-4">
