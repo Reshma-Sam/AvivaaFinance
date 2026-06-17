@@ -223,7 +223,7 @@ export default function Apply() {
       const startedTime = new Date(activeDbLoan.withdrawalStartedAt).getTime();
       const now = Date.now();
       const elapsedSeconds = Math.floor((now - startedTime) / 1000);
-      const totalSeconds = 30 * 60; // 30 minutes
+      const totalSeconds = 1 * 60; // 1 minute
       const remaining = Math.max(0, totalSeconds - elapsedSeconds);
       return remaining;
     };
@@ -2355,7 +2355,7 @@ export default function Apply() {
 
                   <h2 className="text-3xl font-display font-black text-brand-navy mb-2">Processing Disbursal</h2>
                   <p className="text-brand-navy font-bold text-sm uppercase tracking-wider mb-6">
-                    Within 30 minutes payment will Approve
+                    Within 1 minute payment will Approve
                   </p>
 
                   <div className="bg-slate-900 text-white rounded-3xl p-8 mb-8 text-center relative overflow-hidden shadow-xl border border-slate-800">
@@ -2368,7 +2368,7 @@ export default function Apply() {
                     <div className="w-full h-2 bg-slate-800 rounded-full mt-6 overflow-hidden">
                       <div 
                         className="h-full bg-brand-green transition-all duration-1000 ease-linear"
-                        style={{ width: `${((30 * 60 - withdrawalTimeRemaining) / (30 * 60)) * 100}%` }}
+                        style={{ width: `${((1 * 60 - withdrawalTimeRemaining) / (1 * 60)) * 100}%` }}
                       />
                     </div>
                   </div>

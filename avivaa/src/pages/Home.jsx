@@ -1,10 +1,10 @@
-import React, { useState, useRef, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { 
   ArrowRight, CheckCircle2, TrendingDown, Zap, ShieldCheck,
   Users, Building2, MapPin, Award, HeartPulse, Home as HomeIcon, 
   GraduationCap, Plane, PlusCircle, Gem, Calculator, Info,
-  Send, Upload, AlertCircle, Quote, Phone, CheckCircle
+  Quote, Phone, CheckCircle
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import Navbar from "../components/Navbar";
@@ -468,175 +468,118 @@ function Portfolio() {
   );
 }
 
-// --- Contact Form Section ---
+// --- Contact Section (Minimal CTA) ---
 function ContactForm() {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false);
-  const [error, setError] = useState(null);
-  const fileInputRef = useRef(null);
-  const [fileName, setFileName] = useState(null);
-  const [hp, setHp] = useState("");
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (hp) return;
-    setIsSubmitting(true);
-    setError(null);
-    try {
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      setIsSuccess(true);
-      e.target.reset();
-      setFileName(null);
-    } catch (err) {
-      setError("Something went wrong. Please try again.");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleFileChange = (e) => {
-    const file = e.target.files?.[0];
-    if (file) setFileName(file.name);
-  };
-
   return (
     <section id="contact" className="section-padding bg-slate-50">
       <div className="max-w-7xl mx-auto">
-        <div className="grid lg:grid-cols-3 gap-12">
-          <motion.div 
+        <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
+
+          {/* Left: Heading + Contact Info */}
+          <motion.div
             initial={{ opacity: 0, x: -50 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: false, amount: 0.2 }}
             transition={{ duration: 0.8, ease: "easeOut" }}
-            className="lg:col-span-1"
           >
-             <h2 className="text-sm font-bold text-brand-green uppercase tracking-[0.2em] mb-4">Contact Us</h2>
-             <h3 className="text-4xl font-display font-bold text-brand-navy mb-8">Get Your Loan Approved Today.</h3>
-             <p className="text-slate-500 mb-12">
-               Fill out the form and our financial advisors will reach out to you within 24 hours to discuss your requirements.
-             </p>
+            <h2 className="text-sm font-bold text-brand-green uppercase tracking-[0.2em] mb-4">Contact Us</h2>
+            <h3 className="text-4xl md:text-5xl font-display font-bold text-brand-navy mb-6 leading-tight">
+              Get Your Loan <br />Approved Today.
+            </h3>
+            <p className="text-slate-500 mb-10 text-lg leading-relaxed max-w-md">
+              Our financial advisors are ready to help. Reach out to us via WhatsApp or visit one of our offices — we'll get back to you within 24 hours.
+            </p>
 
-             <div className="space-y-8">
-                {[
-                  { icon: Phone, title: "WhatsApp", lines: ["+91 9077321430", "+91 8259089662", "+91 8258949088"] },
-                  { icon: MapPin, title: "Head Office", lines: ["Office 108, Level 1 AI Fattan Currency House, Dubai International Financial Centre (DIFC), PO Box 482092, Dubai, UAE"] },
-                  { icon: MapPin, title: "Branch Office", lines: ["401-A, The Kanakia Wall Street, Chakala, Near J B Nagar, Mumbai - 400093"] }
-                ].map((item, idx) => (
-                   <motion.div 
-                     key={idx}
-                     initial={{ opacity: 0, y: 25 }}
-                     whileInView={{ opacity: 1, y: 0 }}
-                     viewport={{ once: false, amount: 0.2 }}
-                     transition={{ duration: 0.5, delay: idx * 0.1 }}
-                     className="flex items-start gap-4"
-                   >
-                      <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-brand-green shadow-sm border border-slate-100 shrink-0">
-                         <item.icon size={20} />
-                      </div>
-                      <div>
-                         <h4 className="font-bold text-brand-navy">{item.title}</h4>
-                         {item.lines.map((line, lIdx) => (
-                           <p key={lIdx} className="text-sm text-slate-500 max-w-[250px]">{line}</p>
-                         ))}
-                      </div>
-                   </motion.div>
-                ))}
-             </div>
+            <div className="space-y-6">
+              {[
+                { icon: Phone, title: "WhatsApp", lines: ["+91 9077321430", "+91 8259089662", "+91 8258949088"] },
+                { icon: MapPin, title: "Head Office", lines: ["Office 108, Level 1 Al Fattan Currency House, Dubai International Financial Centre (DIFC), PO Box 482092, Dubai, UAE"] },
+                { icon: MapPin, title: "Branch Office", lines: ["401-A, The Kanakia Wall Street, Chakala, Near J B Nagar, Mumbai - 400093"] },
+              ].map((item, idx) => (
+                <motion.div
+                  key={idx}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: false, amount: 0.2 }}
+                  transition={{ duration: 0.5, delay: idx * 0.1 }}
+                  className="flex items-start gap-4"
+                >
+                  <div className="w-11 h-11 bg-white rounded-2xl flex items-center justify-center text-brand-green shadow-sm border border-slate-100 shrink-0">
+                    <item.icon size={18} />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-brand-navy mb-1">{item.title}</h4>
+                    {item.lines.map((line, lIdx) => (
+                      <p key={lIdx} className="text-sm text-slate-500 leading-relaxed">{line}</p>
+                    ))}
+                  </div>
+                </motion.div>
+              ))}
+            </div>
           </motion.div>
 
-          <motion.div 
+          {/* Right: Minimal Apply Now CTA Card */}
+          <motion.div
             initial={{ opacity: 0, y: 50, scale: 0.95 }}
             whileInView={{ opacity: 1, y: 0, scale: 1 }}
             viewport={{ once: false, amount: 0.2 }}
             transition={{ duration: 0.8, ease: "easeOut" }}
-            className="lg:col-span-2"
           >
-            <div className="bg-white p-8 md:p-12 rounded-[40px] shadow-xl border border-slate-100 relative overflow-hidden">
-              <AnimatePresence mode="wait">
-                {isSuccess ? (
-                  <motion.div
-                    key="success"
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.9 }}
-                    className="flex flex-col items-center text-center py-12"
+            <div className="relative bg-brand-navy rounded-[40px] p-10 md:p-14 overflow-hidden shadow-2xl">
+              {/* Decorative blobs */}
+              <div className="absolute -top-16 -right-16 w-64 h-64 bg-brand-green/20 rounded-full blur-3xl pointer-events-none" />
+              <div className="absolute -bottom-16 -left-16 w-64 h-64 bg-brand-green/10 rounded-full blur-3xl pointer-events-none" />
+
+              <div className="relative z-10">
+                {/* Badge */}
+                <div className="inline-flex items-center gap-2 bg-brand-green/20 text-brand-green px-4 py-2 rounded-full mb-8">
+                  <Zap size={16} />
+                  <span className="text-xs font-bold uppercase tracking-wider">Fast Approval</span>
+                </div>
+
+                <h4 className="text-3xl md:text-4xl font-display font-bold text-white mb-4 leading-snug">
+                  Ready to Get <br />
+                  <span className="text-brand-green">Started?</span>
+                </h4>
+                <p className="text-white/60 text-base mb-10 leading-relaxed max-w-sm">
+                  Apply in minutes. No hidden fees, no paperwork hassle. Get up to ₹5,00,000 with our fully digital loan process.
+                </p>
+
+                {/* Trust points */}
+                <ul className="space-y-3 mb-10">
+                  {[
+                    "100% Digital & Paperless",
+                    "Approval in 24 Hours",
+                    "Interest Rate from 0.5%/month",
+                    "Zero Prepayment Penalty",
+                  ].map((point) => (
+                    <li key={point} className="flex items-center gap-3 text-white/80 text-sm font-medium">
+                      <div className="w-5 h-5 rounded-full bg-brand-green/20 flex items-center justify-center shrink-0">
+                        <CheckCircle size={12} className="text-brand-green" />
+                      </div>
+                      {point}
+                    </li>
+                  ))}
+                </ul>
+
+                {/* Apply Now Button */}
+                <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}>
+                  <Link
+                    to="/apply"
+                    className="w-full inline-flex items-center justify-center gap-3 bg-brand-green text-white font-bold text-lg py-5 px-8 rounded-2xl shadow-lg hover:bg-brand-green/90 transition-all"
                   >
-                    <div className="w-20 h-20 bg-green-100 text-brand-green rounded-full flex items-center justify-center mb-6">
-                       <CheckCircle size={40} />
-                    </div>
-                    <h3 className="text-3xl font-display font-bold text-brand-navy mb-4">Application Submitted!</h3>
-                    <p className="text-slate-500 max-w-sm mb-8">
-                       Thank you for choosing Avivaa Finance. Our team will review your details and contact you shortly.
-                    </p>
-                    <button onClick={() => setIsSuccess(false)} className="btn-secondary !py-3">New Application</button>
-                  </motion.div>
-                ) : (
-                  <motion.form key="form" onSubmit={handleSubmit} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="grid md:grid-cols-2 gap-6">
-                    <input type="text" className="hidden" value={hp} onChange={(e) => setHp(e.target.value)} tabIndex={-1} autoComplete="off" />
-                    <div className="space-y-2">
-                       <label className="text-xs font-bold uppercase tracking-widest text-slate-400 ml-1">Full Name *</label>
-                       <input type="text" required placeholder="John Doe" className="input-field" />
-                    </div>
-                    <div className="space-y-2">
-                       <label className="text-xs font-bold uppercase tracking-widest text-slate-400 ml-1">Email Address *</label>
-                       <input type="email" required placeholder="john@example.com" className="input-field" />
-                    </div>
-                    <div className="space-y-2">
-                       <label className="text-xs font-bold uppercase tracking-widest text-slate-400 ml-1">Phone Number *</label>
-                       <input type="tel" required placeholder="+91 00000 00000" className="input-field" />
-                    </div>
-                    <div className="space-y-2">
-                       <label className="text-xs font-bold uppercase tracking-widest text-slate-400 ml-1">Company Name</label>
-                       <input type="text" placeholder="Your Business LP" className="input-field" />
-                    </div>
-                    <div className="space-y-2">
-                       <label className="text-xs font-bold uppercase tracking-widest text-slate-400 ml-1">PAN Details *</label>
-                       <input type="text" required placeholder="ABCDE1234F" className="input-field" />
-                    </div>
-                    <div className="space-y-2">
-                       <label className="text-xs font-bold uppercase tracking-widest text-slate-400 ml-1">Aadhaar Number *</label>
-                       <input type="text" required placeholder="XXXX XXXX XXXX" className="input-field" />
-                    </div>
-                    <div className="space-y-2">
-                       <label className="text-xs font-bold uppercase tracking-widest text-slate-400 ml-1">Service Type *</label>
-                       <select required className="input-field appearance-none">
-                          <option value="">Select Service</option>
-                          <option value="personal">Personal Loan</option>
-                          <option value="business">Business Loan</option>
-                          <option value="medical">Medical Loan</option>
-                          <option value="education">Education Loan</option>
-                          <option value="home">Home Renovation</option>
-                       </select>
-                    </div>
-                    <div className="space-y-2">
-                       <label className="text-xs font-bold uppercase tracking-widest text-slate-400 ml-1">Inquiry Date *</label>
-                       <input type="date" required className="input-field" />
-                    </div>
-                    <div className="md:col-span-2 space-y-2">
-                       <label className="text-xs font-bold uppercase tracking-widest text-slate-400 ml-1">Message</label>
-                       <textarea rows={4} placeholder="Describe your requirement..." className="input-field resize-none"></textarea>
-                    </div>
-                    <div className="md:col-span-2 space-y-2">
-                       <label className="text-xs font-bold uppercase tracking-widest text-slate-400 ml-1">Supporting Documents (PDF/JPG)</label>
-                       <div onClick={() => fileInputRef.current?.click()} className="w-full border-2 border-dashed border-slate-200 rounded-2xl p-8 flex flex-col items-center justify-center gap-3 hover:border-brand-green hover:bg-brand-green/5 transition-all cursor-pointer group">
-                          <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 group-hover:bg-brand-green group-hover:text-white transition-all">
-                             <Upload size={20} />
-                          </div>
-                          <p className="text-sm font-semibold text-slate-500">{fileName || "Drag and drop or click to upload"}</p>
-                          <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".pdf,.jpg,.jpeg,.png" />
-                       </div>
-                    </div>
-                    {error && <div className="md:col-span-2 flex items-center gap-2 text-red-500 text-sm font-semibold"><AlertCircle size={16} />{error}</div>}
-                    <div className="md:col-span-2">
-                       <button type="submit" disabled={isSubmitting} className="w-full btn-primary !rounded-2xl py-4 flex items-center justify-center gap-3">
-                          {isSubmitting ? <><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />Processing...</> : <>Submit Application<Send size={20} /></>}
-                       </button>
-                    </div>
-                  </motion.form>
-                )}
-              </AnimatePresence>
+                    Apply Now
+                    <ArrowRight size={22} className="transition-transform group-hover:translate-x-1" />
+                  </Link>
+                </motion.div>
+
+                <p className="text-center text-white/30 text-xs mt-6 tracking-wide">
+                  No credit score impact from applying.
+                </p>
+              </div>
             </div>
           </motion.div>
+
         </div>
       </div>
     </section>
