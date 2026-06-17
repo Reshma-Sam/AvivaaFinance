@@ -64,3 +64,46 @@ export const uploadToCloudinary = async (base64Data, folder = 'avivaa') => {
   }
 };
 
+/**
+ * Parses a Cloudinary secure/standard URL and deletes the asset from Cloudinary.
+ * Handles different resource types (image, raw) and version segments.
+ * @param {string} url - The Cloudinary asset URL.
+ */
+export const deleteFromCloudinary = async (url) => {
+  if (!url || typeof url !== 'string' || !url.startsWith('http')) {
+    return;
+  }
+  if (!isCloudinaryConfigured) {
+    return;
+  }
+  
+  try {
+    const parts = url.split('/');
+    const uploadIndex = parts.indexOf('upload');
+    if (uploadIndex === -1) return;
+    
+    const resourceType = parts[uploadIndex - 1] || 'image';
+    const afterUploadParts = parts.slice(uploadIndex + 1);
+    
+    let publicIdWithExtensionParts = afterUploadParts;
+    if (afterUploadParts[0] && afterUploadParts[0].startsWith('v') && !isNaN(afterUploadParts[0].substring(1))) {
+      publicIdWithExtensionParts = afterUploadParts.slice(1);
+    }
+    
+    const publicIdWithExtension = publicIdWithExtensionParts.join('/');
+    
+    let publicId = publicIdWithExtension;
+    if (resourceType !== 'raw') {
+      const dotIndex = publicIdWithExtension.lastIndexOf('.');
+      if (dotIndex !== -1) {
+        publicId = publicIdWithExtension.substring(0, dotIndex);
+      }
+    }
+    
+    console.log(`Deleting Cloudinary asset. Resource type: ${resourceType}, Public ID: ${publicId}`);
+    await cloudinary.uploader.destroy(publicId, { resource_type: resourceType });
+  } catch (error) {
+    console.error('Failed to delete asset from Cloudinary:', error.message);
+  }
+};
+

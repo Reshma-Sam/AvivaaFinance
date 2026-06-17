@@ -1,7 +1,7 @@
 import express from 'express';
 import Loan from '../models/Loan.js';
 import auth from '../middleware/auth.js';
-import { uploadToCloudinary } from '../utils/cloudinary.js';
+import { uploadToCloudinary, deleteFromCloudinary } from '../utils/cloudinary.js';
 
 const router = express.Router();
 
@@ -91,11 +91,28 @@ router.put('/:id/status', auth, async (req, res) => {
 // Delete a loan application (Protected)
 router.delete('/:id', auth, async (req, res) => {
   try {
-    const deletedLoan = await Loan.findByIdAndDelete(req.params.id);
-    if (!deletedLoan) {
+    const loan = await Loan.findById(req.params.id);
+    if (!loan) {
       return res.status(404).json({ message: 'Loan application not found' });
     }
-    res.json({ success: true, message: 'Loan application deleted successfully' });
+
+    // Delete associated files from Cloudinary
+    if (loan.kycFiles) {
+      const kyc = loan.kycFiles;
+      if (kyc.panCard && kyc.panCard.data) await deleteFromCloudinary(kyc.panCard.data);
+      if (kyc.aadhaarFront && kyc.aadhaarFront.data) await deleteFromCloudinary(kyc.aadhaarFront.data);
+      if (kyc.aadhaarBack && kyc.aadhaarBack.data) await deleteFromCloudinary(kyc.aadhaarBack.data);
+      if (kyc.nomineeDoc && kyc.nomineeDoc.data) await deleteFromCloudinary(kyc.nomineeDoc.data);
+      if (kyc.selfieImage) await deleteFromCloudinary(kyc.selfieImage);
+    }
+    if (loan.adminPdf && loan.adminPdf.data) {
+      await deleteFromCloudinary(loan.adminPdf.data);
+    }
+
+    // Now delete from MongoDB
+    await Loan.findByIdAndDelete(req.params.id);
+    
+    res.json({ success: true, message: 'Loan application and all associated media deleted successfully' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
