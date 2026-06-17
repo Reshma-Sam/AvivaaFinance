@@ -171,6 +171,7 @@ export default function Apply() {
 
   // Step 6: Bank Account Details
   const [bankName, setBankName] = useState("");
+  const [verifiedBankName, setVerifiedBankName] = useState(""); // VERIFIED BANK NAME (from IFSC lookup or selection)
   const [selectedBankId, setSelectedBankId] = useState(""); // CUSTOM DROPDOWN SELECT
   const [otherBankName, setOtherBankName] = useState(""); // FALLBACK FOR OTHER BANK
   const [showBankDropdown, setShowBankDropdown] = useState(false); // DROPDOWN OPEN/CLOSE
@@ -2413,15 +2414,14 @@ export default function Apply() {
 
                   {activeDbLoan.adminPdf ? (
                     <a
-                      href={activeDbLoan.adminPdf.data}
-                      download={activeDbLoan.adminPdf.name}
-                      target={activeDbLoan.adminPdf.data.startsWith("http") ? "_blank" : undefined}
-                      rel={activeDbLoan.adminPdf.data.startsWith("http") ? "noopener noreferrer" : undefined}
+                      href={`${API_BASE_URL}/loans/${activeDbLoan._id}/pdf-proxy`}
+                      download={activeDbLoan.adminPdf.name || "loan-agreement.pdf"}
                       className="w-full bg-brand-navy text-white hover:bg-brand-navy/90 font-extrabold py-4 px-6 rounded-2xl shadow-xl hover:shadow-2xl active:scale-98 transition-all flex items-center justify-center gap-2 text-base cursor-pointer mb-6"
                     >
                       <Download size={20} /> Download Loan Agreement (PDF)
                     </a>
                   ) : (
+
                     <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-semibold text-slate-500 mb-6 flex items-center justify-center gap-2">
                       <Loader2 size={14} className="animate-spin text-slate-400" />
                       Waiting for finalized loan agreement signature...

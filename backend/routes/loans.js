@@ -151,4 +151,57 @@ router.put('/:id/upload-pdf', auth, async (req, res) => {
   }
 });
 
+// -----------------------------------------------------------------------
+// PDF Proxy Endpoint (Public) — Fetches PDF from Cloudinary server-side
+// and streams it to the client, bypassing Cloudinary's untrusted-customer
+// browser block. The browser never touches Cloudinary directly.
+// -----------------------------------------------------------------------
+router.get('/:id/pdf-proxy', async (req, res) => {
+  try {
+    const loan = await Loan.findById(req.params.id);
+
+    if (!loan) {
+      return res.status(404).json({ message: 'Loan not found' });
+    }
+
+    if (!loan.adminPdf || !loan.adminPdf.data) {
+      return res.status(404).json({ message: 'No PDF available for this loan' });
+    }
+
+    const pdfUrl = loan.adminPdf.data;
+    const pdfName = loan.adminPdf.name || 'loan-agreement.pdf';
+
+    // If the stored data is a base64 string (not a URL), send it directly
+    if (!pdfUrl.startsWith('http')) {
+      const base64Data = pdfUrl.replace(/^data:application\/pdf;base64,/, '');
+      const buffer = Buffer.from(base64Data, 'base64');
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${pdfName}"`);
+      res.setHeader('Content-Length', buffer.length);
+      return res.send(buffer);
+    }
+
+    // Fetch the PDF from Cloudinary on the server side (no browser restriction)
+    const response = await fetch(pdfUrl);
+
+    if (!response.ok) {
+      return res.status(502).json({ message: `Failed to fetch PDF from storage: ${response.status}` });
+    }
+
+    // Stream it back to the client as a download
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${pdfName}"`);
+
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    res.setHeader('Content-Length', buffer.length);
+    return res.send(buffer);
+
+  } catch (err) {
+    console.error('PDF proxy error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;
+

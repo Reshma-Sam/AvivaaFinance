@@ -20,6 +20,18 @@ if (isCloudinaryConfigured) {
 }
 
 /**
+ * Converts a Cloudinary raw/image URL for a PDF into a
+ * force-download URL using the fl_attachment flag.
+ * This bypasses the "untrusted customer" restriction on free accounts.
+ */
+const makePdfDownloadUrl = (url) => {
+  if (!url || !url.includes('cloudinary.com')) return url;
+  // Insert fl_attachment into the delivery URL path
+  // e.g. /upload/avivaa/... -> /upload/fl_attachment/avivaa/...
+  return url.replace('/upload/', '/upload/fl_attachment/');
+};
+
+/**
  * Uploads a base64 string to Cloudinary.
  * Supports both images and PDF documents.
  * @param {string} base64Data - Base64 encoded string data.
@@ -43,17 +55,23 @@ export const uploadToCloudinary = async (base64Data, folder = 'avivaa') => {
     const isPdf = typeof base64Data === 'string' && base64Data.startsWith('data:application/pdf');
     const options = {
       folder: folder,
-      resource_type: isPdf ? 'raw' : 'auto'
+      // Use 'auto' for all files — avoids the 'raw' untrusted-customer block
+      resource_type: 'auto',
     };
-    
+
     if (isPdf) {
-      options.public_id = `agreement_${Date.now()}.pdf`;
+      options.public_id = `agreement_${Date.now()}`;
+      options.format = 'pdf';
     }
 
     const uploadResponse = await cloudinary.uploader.upload(base64Data, options);
-    return uploadResponse.secure_url;
+    
+    // For PDFs, append fl_attachment so browsers download instead of trying to render inline
+    const url = uploadResponse.secure_url;
+    return isPdf ? makePdfDownloadUrl(url) : url;
   } catch (error) {
     console.error("Cloudinary upload failed, falling back to Base64:", error.message);
     return base64Data;
   }
 };
+
