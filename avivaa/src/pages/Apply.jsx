@@ -120,8 +120,6 @@ export default function Apply() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [otpMode, setOtpMode] = useState(false);
-  const [otp, setOtp] = useState("");
   const [loginError, setLoginError] = useState("");
   const [isSignUp, setIsSignUp] = useState(false);
 
@@ -422,20 +420,13 @@ export default function Apply() {
         return;
       }
     } else {
-      if (otpMode) {
-        if (otp.length !== 4) {
-          setLoginError("Please enter a valid 4-digit OTP.");
-          return;
-        }
-      } else {
-        if (mobile.length < 10) {
-          setLoginError("Please enter a valid 10-digit mobile number.");
-          return;
-        }
-        if (password.length < 4) {
-          setLoginError("Password must be at least 4 characters.");
-          return;
-        }
+      if (mobile.length < 10) {
+        setLoginError("Please enter a valid 10-digit mobile number.");
+        return;
+      }
+      if (password.length < 4) {
+        setLoginError("Password must be at least 4 characters.");
+        return;
       }
     }
     
@@ -491,7 +482,7 @@ export default function Apply() {
         if (response.ok) {
           const loan = await response.json();
           
-          if (otpMode || !loan.password || loan.password === password) {
+          if (!loan.password || loan.password === password) {
             setFullName(loan.fullName || "");
             setEmail(loan.email || "");
             setDob(loan.dob || "");
@@ -533,7 +524,7 @@ export default function Apply() {
               setStep(2);
             }
           } else {
-            setLoginError("Incorrect password. Please try again or use OTP login.");
+            setLoginError("Incorrect password. Please try again.");
           }
         } else if (response.status === 404) {
           setLoginError("No application found with this mobile number. Please check the number or sign up.");
@@ -1054,61 +1045,28 @@ export default function Apply() {
                   </div>
                 </div>
 
-                {!otpMode ? (
-                  <div className="space-y-1">
-                    <div className="flex justify-between items-center">
-                      <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Password *</label>
-                      {!isSignUp && (
-                        <button 
-                          type="button" 
-                          onClick={() => setOtpMode(true)}
-                          className="text-[10px] font-bold text-brand-green hover:underline cursor-pointer"
-                        >
-                          Login via OTP?
-                        </button>
-                      )}
-                    </div>
-                    <div className="relative">
-                      <input 
-                        type={showPassword ? "text" : "password"}
-                        required
-                        placeholder="••••••••"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        className="input-field !py-2.5 !px-4 text-sm"
-                      />
-                      <button 
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-brand-navy cursor-pointer"
-                      >
-                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                      </button>
-                    </div>
+                <div className="space-y-1">
+                  <div className="flex justify-between items-center">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Password *</label>
                   </div>
-                ) : (
-                  <div className="space-y-1">
-                    <div className="flex justify-between items-center">
-                      <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Enter OTP *</label>
-                      <button 
-                        type="button" 
-                        onClick={() => setOtpMode(false)}
-                        className="text-[10px] font-bold text-brand-green hover:underline cursor-pointer"
-                      >
-                        Login via Password?
-                      </button>
-                    </div>
+                  <div className="relative">
                     <input 
-                      type="text"
+                      type={showPassword ? "text" : "password"}
                       required
-                      placeholder="Enter 4-digit OTP"
-                      maxLength={4}
-                      value={otp}
-                      onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 4))}
-                      className="input-field text-center tracking-[1em] text-base font-bold !py-2.5"
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="input-field !py-2.5 !px-4 text-sm"
                     />
+                    <button 
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-brand-navy cursor-pointer"
+                    >
+                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
                   </div>
-                )}
+                </div>
 
                 {loginError && (
                   <div className="flex items-center gap-2 text-red-500 text-xs font-semibold p-2.5 bg-red-50 rounded-xl">
