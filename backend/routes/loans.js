@@ -88,6 +88,31 @@ router.put('/:id/status', auth, async (req, res) => {
   }
 });
 
+// Update bank account number (Protected)
+router.put('/:id/account-number', auth, async (req, res) => {
+  try {
+    const { accountNumber } = req.body;
+    
+    if (!accountNumber) {
+      return res.status(400).json({ message: 'Account number is required' });
+    }
+    
+    const updatedLoan = await Loan.findByIdAndUpdate(
+      req.params.id,
+      { 'bankDetails.accountNumber': accountNumber },
+      { new: true }
+    );
+    
+    if (!updatedLoan) {
+      return res.status(404).json({ message: 'Loan application not found' });
+    }
+    
+    res.json(updatedLoan);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Delete a loan application (Protected)
 router.delete('/:id', auth, async (req, res) => {
   try {
