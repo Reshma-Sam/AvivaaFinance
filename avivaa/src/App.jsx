@@ -9,18 +9,40 @@ import Leads from "../src/pages/Leads";
 
 export default function App() {
   return (
-    <ReactLenis root>
-      <Router>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/our-journey" element={<OurJourney />} />
-          <Route path="/apply" element={<Apply />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/dashboard/login" element={<DashboardLogin />} />
-          <Route path="/dashboard/leads" element={<Leads />} />
-        </Routes>
-      </Router>
-    </ReactLenis>
+    <Router>
+      <Routes>
+        {/* Public Pages with Lenis Smooth Scroll */}
+        <Route 
+          path="/" 
+          element={
+            <ReactLenis root>
+              <Home />
+            </ReactLenis>
+          } 
+        />
+        <Route 
+          path="/our-journey" 
+          element={
+            <ReactLenis root>
+              <OurJourney />
+            </ReactLenis>
+          } 
+        />
+        <Route 
+          path="/apply" 
+          element={
+            <ReactLenis root>
+              <Apply />
+            </ReactLenis>
+          } 
+        />
+
+        {/* Admin Pages (Native Scroll) */}
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/dashboard/login" element={<DashboardLogin />} />
+        <Route path="/dashboard/leads" element={<Leads />} />
+      </Routes>
+    </Router>
   );
 }
 
