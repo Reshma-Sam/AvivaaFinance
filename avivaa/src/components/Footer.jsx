@@ -71,7 +71,7 @@ export default function Footer() {
             </div>
           </div>
 
-          <div className="lg:col-span-3 grid md:grid-cols-3 gap-8 p-8 bg-white/5 rounded-[32px] border border-white/10">
+          <div className="lg:col-span-3 grid md:grid-cols-2 gap-8 p-8 bg-white/5 rounded-[32px] border border-white/10">
              <div>
                 <h5 className="text-brand-green text-xs font-bold uppercase tracking-widest mb-4">Head Office</h5>
                 <p className="text-sm text-white/70 leading-relaxed">
@@ -83,14 +83,6 @@ export default function Footer() {
                 <p className="text-sm text-white/70 leading-relaxed">
                   401-A, The Kanakia Wall Street, Chakala, Near J B Nagar, Mumbai - 400093
                 </p>
-             </div>
-             <div>
-                <h5 className="text-brand-green text-xs font-bold uppercase tracking-widest mb-4">WhatsApp</h5>
-                <div className="space-y-1">
-                   <p className="text-sm text-white/70 tracking-wide font-mono">+91 9077321430</p>
-                   <p className="text-sm text-white/70 tracking-wide font-mono">+91 8259089662</p>
-                   <p className="text-sm text-white/70 tracking-wide font-mono">+91 8258949088</p>
-                </div>
              </div>
           </div>
         </div>
@@ -116,7 +108,7 @@ export default function Footer() {
           <div>
              <h4 className="font-display font-bold text-lg mb-6">Services</h4>
              <ul className="space-y-4 text-sm text-white/50">
-               {["Personal Loan", "Business Loan", "Medical Finance", "Home Improvement", "Travel Loan"].map((link) => (
+                {["Personal Loan", "Business Loan"].map((link) => (
                  <li key={link}>
                    <a href="/#services" className="hover:text-brand-green transition-colors">{link}</a>
                  </li>

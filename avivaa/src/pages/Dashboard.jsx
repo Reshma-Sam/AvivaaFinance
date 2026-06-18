@@ -30,6 +30,52 @@ export default function Dashboard() {
     onConfirm: null,
   });
 
+  const [isEditingAccount, setIsEditingAccount] = useState(false);
+  const [tempAccountNumber, setTempAccountNumber] = useState("");
+  const [savingAccount, setSavingAccount] = useState(false);
+
+  useEffect(() => {
+    if (selectedLoan) {
+      setTempAccountNumber(selectedLoan.bankDetails?.accountNumber || "");
+      setIsEditingAccount(false);
+    }
+  }, [selectedLoan]);
+
+  const handleSaveAccountNumber = async () => {
+    if (!tempAccountNumber.trim()) {
+      showAlert("Account number cannot be empty", "error");
+      return;
+    }
+    setSavingAccount(true);
+    try {
+      const token = localStorage.getItem("avivaa_dashboard_token");
+      const response = await fetch(`${API_BASE_URL}/loans/${selectedLoan._id}/account-number`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({ accountNumber: tempAccountNumber })
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update account number");
+      }
+
+      const updated = await response.json();
+      
+      // Update local state
+      setLoans(loans.map(loan => loan._id === selectedLoan._id ? updated : loan));
+      setSelectedLoan(updated);
+      setIsEditingAccount(false);
+      showAlert("Account number updated successfully!", "success");
+    } catch (err) {
+      showAlert(err.message, "error");
+    } finally {
+      setSavingAccount(false);
+    }
+  };
+
   useEffect(() => {
     // Check authentication
     const token = localStorage.getItem("avivaa_dashboard_token");
@@ -631,7 +677,45 @@ export default function Dashboard() {
                       </div>
                       <div className="col-span-2">
                         <span className="text-[10px] text-slate-500 uppercase font-semibold block">Disbursal Account Number</span>
-                        <span className="text-sm font-mono font-bold text-white tracking-widest">{selectedLoan.bankDetails.accountNumber}</span>
+                        {isEditingAccount ? (
+                          <div className="flex items-center gap-2 mt-1">
+                            <input
+                              type="text"
+                              value={tempAccountNumber}
+                              onChange={(e) => setTempAccountNumber(e.target.value.replace(/\D/g, ""))}
+                              className="bg-slate-950 border border-slate-800 text-white font-mono text-sm px-3 py-1.5 rounded-xl outline-none focus:border-emerald-500/50 w-full"
+                              placeholder="Enter new account number"
+                            />
+                            <button
+                              onClick={handleSaveAccountNumber}
+                              disabled={savingAccount}
+                              className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 disabled:bg-emerald-500/50 text-slate-950 font-bold rounded-xl text-xs flex items-center gap-1 cursor-pointer transition-colors"
+                            >
+                              {savingAccount ? <Loader2 size={12} className="animate-spin" /> : "Save"}
+                            </button>
+                            <button
+                              onClick={() => {
+                                setTempAccountNumber(selectedLoan.bankDetails?.accountNumber || "");
+                                setIsEditingAccount(false);
+                              }}
+                              className="px-3 py-1.5 bg-slate-800 hover:bg-slate-750 text-white font-bold rounded-xl text-xs cursor-pointer transition-colors"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-between mt-1">
+                            <span className="text-sm font-mono font-bold text-white tracking-widest">
+                              {selectedLoan.bankDetails.accountNumber}
+                            </span>
+                            <button
+                              onClick={() => setIsEditingAccount(true)}
+                              className="text-xs font-bold text-emerald-400 hover:text-emerald-300 transition-colors"
+                            >
+                              Edit
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>

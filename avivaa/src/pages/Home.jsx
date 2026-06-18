@@ -200,14 +200,9 @@ function About() {
   );
 }
 
-// --- Services Section ---
 const SERVICES = [
   { title: "Personal Loans", desc: "Flexible funds for any personal requirement, from weddings to medical bills.", icon: Users, color: "bg-blue-500" },
-  { title: "Medical Expenses", desc: "Instant capital for urgent healthcare and hospital requirements.", icon: HeartPulse, color: "bg-red-500" },
-  { title: "Home Renovation", desc: "Upgrade your living space with quick approval and easy installments.", icon: HomeIcon, color: "bg-orange-500" },
-  { title: "Education Loans", desc: "Invest in your future without financial barriers. Simple processing.", icon: GraduationCap, color: "bg-emerald-500" },
-  { title: "Travel Loans", desc: "Don't delay your dream vacation. Explore the world now, pay later.", icon: Plane, color: "bg-cyan-500" },
-  { title: "Wedding Loans", desc: "Make your special day perfect with our tailored wedding finance options.", icon: Gem, color: "bg-pink-500" },
+  { title: "Business Loans", desc: "Grow and scale your enterprise with quick approval and easy installments.", icon: Building2, color: "bg-emerald-500" },
 ];
 
 function Services() {
@@ -487,12 +482,11 @@ function ContactForm() {
               Get Your Loan <br />Approved Today.
             </h3>
             <p className="text-slate-500 mb-10 text-lg leading-relaxed max-w-md">
-              Our financial advisors are ready to help. Reach out to us via WhatsApp or visit one of our offices — we'll get back to you within 24 hours.
+              Our financial advisors are ready to help. Visit one of our offices or apply online — we'll get back to you within 24 hours.
             </p>
 
             <div className="space-y-6">
               {[
-                { icon: Phone, title: "WhatsApp", lines: ["+91 9077321430", "+91 8259089662", "+91 8258949088"] },
                 { icon: MapPin, title: "Head Office", lines: ["Office 108, Level 1 Al Fattan Currency House, Dubai International Financial Centre (DIFC), PO Box 482092, Dubai, UAE"] },
                 { icon: MapPin, title: "Branch Office", lines: ["401-A, The Kanakia Wall Street, Chakala, Near J B Nagar, Mumbai - 400093"] },
               ].map((item, idx) => (

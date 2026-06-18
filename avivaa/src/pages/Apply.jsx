@@ -176,7 +176,6 @@ export default function Apply() {
   const [otherBankName, setOtherBankName] = useState(""); // FALLBACK FOR OTHER BANK
   const [showBankDropdown, setShowBankDropdown] = useState(false); // DROPDOWN OPEN/CLOSE
   const [accountNumber, setAccountNumber] = useState("");
-  const [confirmAccount, setConfirmAccount] = useState("");
   const [ifscCode, setIfscCode] = useState("");
   const [accountHolder, setAccountHolder] = useState("");
   const [bankErrors, setBankErrors] = useState({});
@@ -187,6 +186,7 @@ export default function Apply() {
   const [submitStatusText, setSubmitStatusText] = useState("Registering Secure Disbursal Channel...");
   const [submitError, setSubmitError] = useState(null);
   
+  const [showSubmittedDetails, setShowSubmittedDetails] = useState(false);
   const [activeDbLoan, setActiveDbLoan] = useState(null);
   const [withdrawalTimeRemaining, setWithdrawalTimeRemaining] = useState(0);
   const [pollingLoading, setPollingLoading] = useState(false);
@@ -263,10 +263,6 @@ export default function Apply() {
       alert('Could not start withdrawal process. Please try again.');
     }
   };
-
-  // WhatsApp contact details
-  const whatsAppNumber = "919077321430";
-  const formattedWhatsAppNumber = "+91 90773 21430";
 
   // Save application draft to backend
   const saveDraft = async (nextStep) => {
@@ -516,12 +512,9 @@ export default function Apply() {
             
             // Restore step
             if (
-              loan.status === "Pending" ||
-              loan.status === "Approved" ||
-              loan.status === "Rejected" ||
-              loan.status === "Completed" ||
-              loan.withdrawalTriggered ||
-              loan.currentStep === 8
+              loan.currentStep === 8 ||
+              (loan.status && loan.status !== "Pending") ||
+              loan.withdrawalTriggered
             ) {
               setStep(8);
             } else if (loan.currentStep && loan.currentStep >= 2 && loan.currentStep < 8) {
@@ -891,9 +884,6 @@ export default function Apply() {
     }
 
     if (!accountNumber) errors.accountNumber = "Account number is required";
-    if (accountNumber !== confirmAccount) {
-      errors.confirmAccount = "Account numbers do not match";
-    }
     
     // Simple IFSC regex: 4 letters, 0, 6 letters/digits
     const ifscRegex = /^[A-Z]{4}0[A-Z0-9]{6}$/i;
@@ -2055,32 +2045,17 @@ export default function Apply() {
                   </motion.div>
                 )}
 
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase tracking-widest text-slate-400">Account Number *</label>
-                    <input 
-                      type="password"
-                      required
-                      placeholder="••••••••••••"
-                      value={accountNumber}
-                      onChange={(e) => setAccountNumber(e.target.value.replace(/\D/g, ""))}
-                      className={`input-field ${bankErrors.accountNumber ? "border-red-400 bg-red-50/10" : ""}`}
-                    />
-                    {bankErrors.accountNumber && <p className="text-xs text-red-500 font-semibold">{bankErrors.accountNumber}</p>}
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase tracking-widest text-slate-400">Confirm Account Number *</label>
-                    <input 
-                      type="text"
-                      required
-                      placeholder="Re-enter account number"
-                      value={confirmAccount}
-                      onChange={(e) => setConfirmAccount(e.target.value.replace(/\D/g, ""))}
-                      className={`input-field ${bankErrors.confirmAccount ? "border-red-400 bg-red-50/10" : ""}`}
-                    />
-                    {bankErrors.confirmAccount && <p className="text-xs text-red-500 font-semibold">{bankErrors.confirmAccount}</p>}
-                  </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase tracking-widest text-slate-400">Account Number *</label>
+                  <input 
+                    type="text"
+                    required
+                    placeholder="Enter account number"
+                    value={accountNumber}
+                    onChange={(e) => setAccountNumber(e.target.value.replace(/\D/g, ""))}
+                    className={`input-field ${bankErrors.accountNumber ? "border-red-400 bg-red-50/10" : ""}`}
+                  />
+                  {bankErrors.accountNumber && <p className="text-xs text-red-500 font-semibold">{bankErrors.accountNumber}</p>}
                 </div>
 
                 <div className="space-y-2">
@@ -2273,6 +2248,138 @@ export default function Apply() {
                     </>
                   )}
                 </div>
+              ) : showSubmittedDetails ? (
+                // --- SUBMITTED DETAILS VIEW ---
+                <div className="text-left space-y-6">
+                  <div className="flex items-center gap-4 border-b border-slate-100 pb-5">
+                    {activeDbLoan.kycFiles?.selfieImage && (
+                      <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl overflow-hidden border-2 border-brand-green/20 shadow-md shrink-0">
+                        <img 
+                          src={activeDbLoan.kycFiles.selfieImage} 
+                          alt="Applicant Selfie" 
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    )}
+                    <div>
+                      <span className="text-[10px] text-brand-green uppercase font-black tracking-widest block mb-1">
+                        Applicant: {activeDbLoan.fullName}
+                      </span>
+                      <h2 className="text-2xl md:text-3xl font-display font-black text-brand-navy leading-none">
+                        Submitted Details
+                      </h2>
+                      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mt-1.5">
+                        Verify your application credentials
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* 1. Loan Parameters */}
+                  <div className="bg-slate-50 border border-slate-100 rounded-2xl p-5 space-y-3">
+                    <h3 className="text-xs font-black uppercase tracking-wider text-brand-green flex items-center gap-1.5 border-b border-slate-200/60 pb-2 font-bold">
+                      <CreditCard size={14} /> Loan Selection
+                    </h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <span className="text-[10px] text-slate-400 uppercase font-semibold block">Requested Principal</span>
+                        <span className="text-sm font-bold text-brand-navy">₹{activeDbLoan.loanAmount.toLocaleString("en-IN")}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 uppercase font-semibold block">Repayment Term</span>
+                        <span className="text-sm font-bold text-brand-navy">{activeDbLoan.tenure} Months</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 uppercase font-semibold block">Monthly Interest</span>
+                        <span className="text-sm font-bold text-brand-navy">0.5% (Flat)</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 uppercase font-semibold block">In-Hand Disbursal</span>
+                        <span className="text-sm font-bold text-emerald-600">₹{(activeDbLoan.loanAmount - Math.round(activeDbLoan.loanAmount * 0.02) - Math.round(Math.round(activeDbLoan.loanAmount * 0.02) * 0.18)).toLocaleString("en-IN")}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 2. Personal Profile */}
+                  <div className="bg-slate-50 border border-slate-100 rounded-2xl p-5 space-y-3">
+                    <h3 className="text-xs font-black uppercase tracking-wider text-brand-green flex items-center gap-1.5 border-b border-slate-200/60 pb-2 font-bold">
+                      <User size={14} /> Profile Verification
+                    </h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="col-span-2">
+                        <span className="text-[10px] text-slate-400 uppercase font-semibold block">Full Legal Name</span>
+                        <span className="text-sm font-bold text-brand-navy">{activeDbLoan.fullName}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 uppercase font-semibold block">Date of Birth</span>
+                        <span className="text-sm font-semibold text-slate-700">{activeDbLoan.dob}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 uppercase font-semibold block">PAN Number</span>
+                        <span className="text-sm font-mono font-bold text-slate-700">{activeDbLoan.panNumber}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 uppercase font-semibold block">Aadhaar Card</span>
+                        <span className="text-sm font-mono font-bold text-slate-700">{activeDbLoan.aadhaarNumber}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 uppercase font-semibold block">Monthly Income</span>
+                        <span className="text-sm font-bold text-brand-navy">₹{activeDbLoan.monthlyIncome.toLocaleString("en-IN")}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 3. Nominee details */}
+                  {activeDbLoan.nomineeName && (
+                    <div className="bg-slate-50 border border-slate-100 rounded-2xl p-5 space-y-3">
+                      <h3 className="text-xs font-black uppercase tracking-wider text-brand-green flex items-center gap-1.5 border-b border-slate-200/60 pb-2 font-bold">
+                        <User size={14} /> Nominee Coordinates
+                      </h3>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <span className="text-[10px] text-slate-400 uppercase font-semibold block">Nominee Name</span>
+                          <span className="text-sm font-bold text-brand-navy">{activeDbLoan.nomineeName}</span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-slate-400 uppercase font-semibold block">Relationship</span>
+                          <span className="text-sm font-semibold text-slate-700">{activeDbLoan.nomineeRelation}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 4. Disbursal Coordinates */}
+                  <div className="bg-slate-50 border border-slate-100 rounded-2xl p-5 space-y-3">
+                    <h3 className="text-xs font-black uppercase tracking-wider text-brand-green flex items-center gap-1.5 border-b border-slate-200/60 pb-2 font-bold">
+                      <Landmark size={14} /> Target Bank Account
+                    </h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <span className="text-[10px] text-slate-400 uppercase font-semibold block">Bank Provider</span>
+                        <span className="text-sm font-bold text-brand-navy">{activeDbLoan.bankDetails.bankName}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 uppercase font-semibold block">IFSC Code</span>
+                        <span className="text-sm font-mono font-bold text-slate-700">{activeDbLoan.bankDetails.ifscCode}</span>
+                      </div>
+                      <div className="col-span-2">
+                        <span className="text-[10px] text-slate-400 uppercase font-semibold block">Account Holder Name</span>
+                        <span className="text-sm font-bold text-brand-navy">{activeDbLoan.bankDetails.accountHolder}</span>
+                      </div>
+                      <div className="col-span-2">
+                        <span className="text-[10px] text-slate-400 uppercase font-semibold block">Disbursal Account Number</span>
+                        <span className="text-sm font-mono font-bold text-brand-navy tracking-widest">{activeDbLoan.bankDetails.accountNumber}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowSubmittedDetails(false)}
+                    className="w-full py-4 bg-brand-navy hover:bg-brand-navy/90 text-white font-extrabold rounded-2xl shadow-xl hover:shadow-2xl active:scale-98 transition-all flex items-center justify-center gap-2 text-sm cursor-pointer mt-6"
+                  >
+                    <ArrowLeft size={16} /> Back to Status Page
+                  </button>
+                </div>
               ) : activeDbLoan.status === "Pending" ? (
                 // --- CASE A: PENDING STATUS ---
                 <div>
@@ -2436,33 +2543,17 @@ export default function Apply() {
                 </div>
               )}
 
-              <div className="space-y-4 max-w-sm mx-auto">
-                <p className="text-slate-500 text-sm leading-normal">
-                  For any further enquiries or urgent requests, please contact our support representatives instantly on WhatsApp:
-                </p>
-
-                <a 
-                  href={`https://wa.me/${whatsAppNumber}?text=${encodeURIComponent(`Hello, my loan application for ₹${loanAmount.toLocaleString("en-IN")} was submitted successfully. Please assist with further disbursal details.`)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full bg-[#25D366] text-white hover:bg-[#20ba59] font-bold py-4 px-6 rounded-2xl shadow-xl hover:shadow-2xl active:scale-98 transition-all flex items-center justify-center gap-2 text-base cursor-pointer"
-                >
-                  <MessageCircle size={22} className="fill-white" /> Contact {formattedWhatsAppNumber}
-                </a>
-
-                <div className="flex items-center justify-center gap-1.5 text-xs text-slate-400">
-                  <Phone size={12} /> Standard Response: &lt;5 mins
+              {!showSubmittedDetails && (
+                <div className="mt-10 pt-6 border-t border-slate-100 flex flex-col items-center gap-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowSubmittedDetails(true)}
+                    className="w-full py-4 text-brand-navy hover:text-brand-navy/80 font-bold transition-all text-sm flex items-center justify-center gap-2 border border-slate-200 rounded-2xl hover:bg-slate-50 cursor-pointer"
+                  >
+                    <ArrowLeft size={16} /> Back (View Details)
+                  </button>
                 </div>
-              </div>
-
-              <div className="mt-10 pt-6 border-t border-slate-100">
-                <Link 
-                  to="/" 
-                  className="text-sm font-bold text-brand-navy hover:text-brand-green transition-colors"
-                >
-                  Back to Homepage
-                </Link>
-              </div>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
