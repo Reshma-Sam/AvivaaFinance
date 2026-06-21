@@ -83,7 +83,7 @@ const loanSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['Pending', 'Approved', 'Rejected'],
+    enum: ['Pending', 'Approved', 'Rejected', 'Hold'],
     default: 'Pending'
   },
   adminPdf: {
