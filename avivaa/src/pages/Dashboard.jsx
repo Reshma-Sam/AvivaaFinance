@@ -279,6 +279,7 @@ export default function Dashboard() {
   const pendingApps = completedLoans.filter(l => l.status === "Pending").length;
   const approvedApps = completedLoans.filter(l => l.status === "Approved").length;
   const rejectedApps = completedLoans.filter(l => l.status === "Rejected").length;
+  const holdApps = completedLoans.filter(l => l.status === "Hold").length;
   const totalApprovedVolume = completedLoans
     .filter(l => l.status === "Approved")
     .reduce((sum, curr) => sum + curr.loanAmount, 0);
@@ -299,8 +300,9 @@ export default function Dashboard() {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case "Approved": return "bg-emerald-500/10 text-emerald-400 border-emerald-500/20";
-      case "Rejected": return "bg-red-500/10 text-red-400 border-red-500/20";
+      case "Approved": return "bg-emerald-500/10 text-emerald-450 border-emerald-500/20";
+      case "Rejected": return "bg-red-500/10 text-red-405 border-red-500/20";
+      case "Hold": return "bg-amber-500/10 text-amber-500 border-amber-500/20";
       default: return "bg-amber-500/10 text-amber-400 border-amber-500/20";
     }
   };
@@ -377,7 +379,7 @@ export default function Dashboard() {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
           <div className="bg-slate-900/50 border border-slate-900 p-5 rounded-2xl flex flex-col justify-between">
             <span className="text-[10px] uppercase font-black tracking-wider text-slate-500">Total Requests</span>
             <div className="mt-2 flex items-baseline gap-2">
@@ -395,7 +397,7 @@ export default function Dashboard() {
           <div className="bg-slate-900/50 border border-slate-900 p-5 rounded-2xl flex flex-col justify-between">
             <span className="text-[10px] uppercase font-black tracking-wider text-slate-500">Approved Loans</span>
             <div className="mt-2 flex items-baseline gap-2">
-              <span className="text-3xl font-black text-emerald-500">{approvedApps}</span>
+              <span className="text-3xl font-black text-emerald-505">{approvedApps}</span>
               <span className="text-xs text-slate-500">cleared</span>
             </div>
           </div>
@@ -406,8 +408,15 @@ export default function Dashboard() {
               <span className="text-xs text-slate-500">rejected</span>
             </div>
           </div>
-          <div className="bg-emerald-950/20 border border-emerald-900/20 p-5 rounded-2xl flex flex-col justify-between col-span-1 sm:col-span-2 lg:col-span-1">
-            <span className="text-[10px] uppercase font-black tracking-wider text-emerald-500/80">Approved Capital Volume</span>
+          <div className="bg-slate-900/50 border border-slate-900 p-5 rounded-2xl flex flex-col justify-between">
+            <span className="text-[10px] uppercase font-black tracking-wider text-slate-500">On Hold</span>
+            <div className="mt-2 flex items-baseline gap-2">
+              <span className="text-3xl font-black text-amber-500">{holdApps}</span>
+              <span className="text-xs text-slate-500">paused</span>
+            </div>
+          </div>
+          <div className="bg-emerald-950/20 border border-emerald-900/20 p-5 rounded-2xl flex flex-col justify-between col-span-1 sm:col-span-2 lg:col-span-1 xl:col-span-1">
+            <span className="text-[10px] uppercase font-black tracking-wider text-emerald-555/80">Approved Capital Volume</span>
             <div className="mt-2 flex items-baseline gap-2">
               <span className="text-2xl font-black text-emerald-400">{formatCurrency(totalApprovedVolume)}</span>
             </div>
@@ -428,7 +437,7 @@ export default function Dashboard() {
           </div>
 
           <div className="flex gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
-            {["All", "Pending", "Approved", "Rejected"].map(filterVal => (
+            {["All", "Pending", "Approved", "Rejected", "Hold"].map(filterVal => (
               <button
                 key={filterVal}
                 onClick={() => setStatusFilter(filterVal)}
@@ -1007,7 +1016,7 @@ export default function Dashboard() {
                   </button>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto justify-end">
-                  {selectedLoan.status === "Pending" ? (
+                  {selectedLoan.status === "Pending" || selectedLoan.status === "Hold" ? (
                     <>
                       <button
                         onClick={() => handleUpdateStatus(selectedLoan._id, "Rejected")}
@@ -1017,6 +1026,25 @@ export default function Dashboard() {
                         {updatingStatusId === selectedLoan._id ? <Loader2 size={14} className="animate-spin" /> : null}
                         Decline Application
                       </button>
+                      {selectedLoan.status === "Pending" ? (
+                        <button
+                          onClick={() => handleUpdateStatus(selectedLoan._id, "Hold")}
+                          disabled={updatingStatusId !== null}
+                          className="px-6 py-3 border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 font-bold rounded-xl text-xs transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                        >
+                          {updatingStatusId === selectedLoan._id ? <Loader2 size={14} className="animate-spin" /> : null}
+                          Put on Hold
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleUpdateStatus(selectedLoan._id, "Pending")}
+                          disabled={updatingStatusId !== null}
+                          className="px-6 py-3 border border-cyan-500/30 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 font-bold rounded-xl text-xs transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                        >
+                          {updatingStatusId === selectedLoan._id ? <Loader2 size={14} className="animate-spin" /> : null}
+                          Resume Processing
+                        </button>
+                      )}
                       <button
                         onClick={() => handleUpdateStatus(selectedLoan._id, "Approved")}
                         disabled={updatingStatusId !== null}

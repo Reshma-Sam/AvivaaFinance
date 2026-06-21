@@ -4,7 +4,7 @@ import {
   ArrowLeft, ArrowRight, Lock, ShieldCheck, Check, Camera, 
   Upload, User, CreditCard, Building2, Landmark, CheckCircle, 
   AlertCircle, MessageCircle, Phone, Info, Eye, EyeOff, Loader2,
-  TrendingDown, Clock, Download, X
+  TrendingDown, Clock, Download, X, Pause
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import logo from "../assets/logo.jpeg";
@@ -109,6 +109,14 @@ const INDIAN_BANKS = [
   }
 ];
 
+const ALLOWED_AMOUNTS = [50000, 100000, 150000, 200000, 300000, 400000, 500000];
+
+const getClosestAmount = (amount) => {
+  return ALLOWED_AMOUNTS.reduce((prev, curr) => 
+    Math.abs(curr - amount) < Math.abs(prev - amount) ? curr : prev
+  );
+};
+
 export default function Apply() {
   const navigate = useNavigate();
   const [step, setStep] = useState(1); // 1: Login, 2: Personal Details, 3: Loan Eligibility, 4: Loan Config, 5: Document Upload, 6: Selfie Verification, 7: Bank Details, 8: Success
@@ -189,11 +197,35 @@ export default function Apply() {
   const [showSubmittedDetails, setShowSubmittedDetails] = useState(false);
   const [activeDbLoan, setActiveDbLoan] = useState(null);
   const [withdrawalTimeRemaining, setWithdrawalTimeRemaining] = useState(0);
+  const [notification, setNotification] = useState(null);
   const [pollingLoading, setPollingLoading] = useState(false);
+  const prevStatusRef = useRef(null);
+
+  // Request Notification permission when entering step 8
+  useEffect(() => {
+    if (step === 8 && "Notification" in window) {
+      if (Notification.permission === "default") {
+        Notification.requestPermission();
+      }
+    }
+  }, [step]);
+
+  // Auto-dismiss notification after 8 seconds
+  useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => {
+        setNotification(null);
+      }, 8000);
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
 
   // Poll status on Step 8 every 6 seconds to see if Admin updates it
   useEffect(() => {
-    if (step !== 8 || !mobile) return;
+    if (step !== 8 || !mobile) {
+      prevStatusRef.current = null;
+      return;
+    }
 
     const fetchStatus = async () => {
       try {
@@ -201,6 +233,42 @@ export default function Apply() {
         if (response.ok) {
           const loan = await response.json();
           setActiveDbLoan(loan);
+
+          // Trigger notification if status has changed
+          if (prevStatusRef.current && prevStatusRef.current !== loan.status) {
+            let title = "Status Update";
+            let message = `Your loan application status has changed to ${loan.status}.`;
+            let type = "info";
+
+            if (loan.status === "Approved") {
+              title = "🎉 Loan Approved!";
+              message = `Congratulations! Your loan of ₹${loan.loanAmount.toLocaleString("en-IN")} is approved. You can now withdraw the funds.`;
+              type = "success";
+            } else if (loan.status === "Rejected") {
+              title = "❌ Application Declined";
+              message = "We regret to inform you that your loan application has been declined after underwriter review.";
+              type = "error";
+            } else if (loan.status === "Hold") {
+              title = "⚠️ Application On Hold";
+              message = "Your loan application is temporarily on hold. Please check details and contact support.";
+              type = "warning";
+            }
+
+            setNotification({ title, message, type });
+
+            // Native Web Notification
+            if ("Notification" in window && Notification.permission === "granted") {
+              try {
+                new Notification(title, {
+                  body: message
+                });
+              } catch (e) {
+                console.error("Web Notification error:", e);
+              }
+            }
+          }
+
+          prevStatusRef.current = loan.status;
         }
       } catch (err) {
         console.error("Failed to poll loan status:", err);
@@ -495,7 +563,7 @@ export default function Apply() {
             setMonthlyIncome(loan.monthlyIncome || "");
             setNomineeName(loan.nomineeName || "");
             setNomineeRelation(loan.nomineeRelation || "Spouse");
-            setLoanAmount(loan.loanAmount || 150000);
+            setLoanAmount(getClosestAmount(loan.loanAmount || 150000));
             setTenure(loan.loanDuration || 24);
             setAccountHolder(loan.bankDetails?.accountHolder || "");
             setBankName(loan.bankDetails?.bankName || "");
@@ -921,6 +989,7 @@ export default function Apply() {
               if (cameraActive) stopCamera();
               
               if (step === 4) {
+                setShowMobileSummary(false);
                 setStep(2); // Skip Step 3 loader when going back to keep state
               } else {
                 setStep(step - 1);
@@ -1390,10 +1459,10 @@ export default function Apply() {
               data-lenis-prevent
             >
               {/* ── DESKTOP: Side-by-side ── MOBILE: Single column ── */}
-              <div className="overflow-hidden grid md:grid-cols-5 flex-1">
+              <div className="overflow-visible md:overflow-hidden grid md:grid-cols-5 md:flex-1">
 
                 {/* ── Left / Top Panel: Sliders ── */}
-                <div className="md:col-span-3 p-6 md:p-8 md:border-r border-slate-100 flex flex-col">
+                <div className="md:col-span-3 p-5 md:p-8 md:border-r border-slate-100 flex flex-col">
                   <div>
                     <div className="inline-flex items-center gap-2 bg-brand-green/10 text-brand-green px-3 py-1.5 rounded-full mb-3">
                       <TrendingDown size={14} />
@@ -1411,11 +1480,11 @@ export default function Apply() {
                         </div>
                         <input
                           type="range"
-                          min="50000"
-                          max="500000"
-                          step="10000"
-                          value={loanAmount}
-                          onChange={(e) => setLoanAmount(Number(e.target.value))}
+                          min="0"
+                          max={ALLOWED_AMOUNTS.length - 1}
+                          step="1"
+                          value={ALLOWED_AMOUNTS.indexOf(loanAmount) !== -1 ? ALLOWED_AMOUNTS.indexOf(loanAmount) : 2}
+                          onChange={(e) => setLoanAmount(ALLOWED_AMOUNTS[Number(e.target.value)])}
                           className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-brand-green"
                         />
                         <div className="flex justify-between text-[10px] font-bold text-slate-400 uppercase">
@@ -1517,80 +1586,6 @@ export default function Apply() {
                   </div>
                 </div>
               </div>
-
-              {/* ── MOBILE BOTTOM SHEET: Loan Summary ── */}
-              <AnimatePresence>
-                {showMobileSummary && (
-                  <>
-                    {/* Backdrop */}
-                    <motion.div
-                      key="backdrop"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      onClick={() => setShowMobileSummary(false)}
-                      className="fixed inset-0 bg-brand-navy/40 backdrop-blur-sm z-40 md:hidden"
-                    />
-                    {/* Sheet */}
-                    <motion.div
-                      key="summary-sheet"
-                      initial={{ y: "100%" }}
-                      animate={{ y: 0 }}
-                      exit={{ y: "100%" }}
-                      transition={{ type: "spring", damping: 28, stiffness: 320 }}
-                      className="fixed bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl z-50 md:hidden p-6 pb-8"
-                    >
-                      {/* Drag handle */}
-                      <div className="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-5" />
-
-                      <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-4">Estimated Cost Summary</h3>
-
-                      {/* EMI Highlight */}
-                      <div className="text-center bg-slate-50 rounded-2xl p-4 border border-slate-100 mb-5">
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Monthly Installment (EMI)</p>
-                        <p className="text-4xl font-display font-black text-brand-navy">₹ {emi.toLocaleString("en-IN")}</p>
-                        <p className="text-[10px] text-brand-green font-bold mt-1 uppercase tracking-wider">Interest Included</p>
-                      </div>
-
-                      {/* Breakdown */}
-                      <div className="space-y-3 mb-6">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-slate-500 font-medium">Interest Rate</span>
-                          <span className="font-bold text-brand-navy">{interestRate}% Flat Monthly</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-slate-500 font-medium">Processing Fee (2%)</span>
-                          <span className="font-bold text-brand-navy">₹ {processingFee.toLocaleString("en-IN")}</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-slate-500 font-medium">GST on Fee (18%)</span>
-                          <span className="font-bold text-brand-navy">₹ {gstOnFee.toLocaleString("en-IN")}</span>
-                        </div>
-                        <div className="border-t border-slate-200 my-1" />
-                        <div className="flex justify-between text-sm">
-                          <span className="text-slate-600 font-semibold">Net Disbursed (In Hand)</span>
-                          <span className="font-bold text-brand-green">₹ {inHandAmount.toLocaleString("en-IN")}</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-slate-600 font-semibold">Total Repayable Amount</span>
-                          <span className="font-bold text-brand-navy">₹ {totalRepay.toLocaleString("en-IN")}</span>
-                        </div>
-                      </div>
-
-                      {/* Apply CTA */}
-                      <button
-                        onClick={() => { setShowMobileSummary(false); handleLoanConfigProceed(); }}
-                        className="w-full bg-brand-green text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-brand-green/30 text-base active:scale-95 transition-transform cursor-pointer"
-                      >
-                        Apply Now <ArrowRight size={20} />
-                      </button>
-                      <p className="text-[9px] text-center text-slate-400 mt-3">
-                        Terms &amp; conditions apply. Indicative metrics, charges processed securely.
-                      </p>
-                    </motion.div>
-                  </>
-                )}
-              </AnimatePresence>
             </motion.div>
           )}
 
@@ -2397,7 +2392,7 @@ export default function Apply() {
                       Your loan application for <strong className="text-brand-navy">₹{activeDbLoan.loanAmount.toLocaleString("en-IN")}</strong> is currently undergoing credit underwriting review.
                     </p>
                     <p className="text-xs font-semibold text-slate-600 leading-relaxed">
-                      This process typically takes between <strong>1 to 24 hours</strong>. Our live auditors are matching bank coordinates and verifying biometric selfie records.
+                      This process typically takes <strong>24 hours</strong>. Our live auditors are matching bank coordinates and verifying biometric selfie records.
                     </p>
                     <div className="flex items-center gap-2 pt-2 text-[10px] text-slate-400 font-bold uppercase tracking-wider">
                       <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
@@ -2424,6 +2419,34 @@ export default function Apply() {
                     <p className="text-xs font-semibold text-slate-600 leading-relaxed">
                       For any disputes or to upload alternative credit information, please get in touch with our underwriters below.
                     </p>
+                  </div>
+                </div>
+              ) : activeDbLoan.status === "Hold" ? (
+                // --- CASE F: ON HOLD STATUS ---
+                <div>
+                  <div className="w-24 h-24 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-8 shadow-inner relative animate-[pulse_2s_infinite]">
+                    <Pause size={56} className="text-amber-500" />
+                  </div>
+
+                  <h2 className="text-3xl font-display font-black text-brand-navy mb-4">Application On Hold</h2>
+                  <p className="text-amber-500 font-extrabold text-sm uppercase tracking-wider mb-6">
+                    Current Status: Temporary Hold
+                  </p>
+
+                  <div className="bg-slate-50 rounded-2xl p-6 border border-slate-100 mb-8 text-left space-y-4">
+                    <p className="text-xs font-semibold text-slate-600 leading-relaxed">
+                      Your loan application for <strong className="text-brand-navy">₹{activeDbLoan.loanAmount.toLocaleString("en-IN")}</strong> has been placed on hold by our underwriting desk.
+                    </p>
+                    <p className="text-xs font-semibold text-slate-600 leading-relaxed">
+                      This is typically due to temporary document verification discrepancies or missing information.
+                    </p>
+                    <p className="text-xs font-semibold text-slate-600 leading-relaxed text-slate-500">
+                      Our support staff is reviewing your application. Please contact our support coordinates immediately to resolve this and continue your application.
+                    </p>
+                    <div className="flex items-center gap-2 pt-2 text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                      <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
+                      Awaiting Action / Document Verification...
+                    </div>
                   </div>
                 </div>
               ) : activeDbLoan.status === "Approved" && !activeDbLoan.withdrawalTriggered ? (
@@ -2559,6 +2582,80 @@ export default function Apply() {
         </AnimatePresence>
       </main>
 
+      {/* ── MOBILE BOTTOM SHEET: Loan Summary ── */}
+      <AnimatePresence>
+        {showMobileSummary && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              key="backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowMobileSummary(false)}
+              className="fixed inset-0 bg-brand-navy/40 backdrop-blur-sm z-40 md:hidden"
+            />
+            {/* Sheet */}
+            <motion.div
+              key="summary-sheet"
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 28, stiffness: 320 }}
+              className="fixed bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl z-50 md:hidden p-6 pb-8"
+            >
+              {/* Drag handle */}
+              <div className="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-5" />
+
+              <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-4">Estimated Cost Summary</h3>
+
+              {/* EMI Highlight */}
+              <div className="text-center bg-slate-50 rounded-2xl p-4 border border-slate-100 mb-5">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Monthly Installment (EMI)</p>
+                <p className="text-4xl font-display font-black text-brand-navy">₹ {emi.toLocaleString("en-IN")}</p>
+                <p className="text-[10px] text-brand-green font-bold mt-1 uppercase tracking-wider">Interest Included</p>
+              </div>
+
+              {/* Breakdown */}
+              <div className="space-y-3 mb-6">
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-500 font-medium">Interest Rate</span>
+                  <span className="font-bold text-brand-navy">{interestRate}% Flat Monthly</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-500 font-medium">Processing Fee (2%)</span>
+                  <span className="font-bold text-brand-navy">₹ {processingFee.toLocaleString("en-IN")}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-500 font-medium">GST on Fee (18%)</span>
+                  <span className="font-bold text-brand-navy">₹ {gstOnFee.toLocaleString("en-IN")}</span>
+                </div>
+                <div className="border-t border-slate-200 my-1" />
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-600 font-semibold">Net Disbursed (In Hand)</span>
+                  <span className="font-bold text-brand-green">₹ {inHandAmount.toLocaleString("en-IN")}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-600 font-semibold">Total Repayable Amount</span>
+                  <span className="font-bold text-brand-navy">₹ {totalRepay.toLocaleString("en-IN")}</span>
+                </div>
+              </div>
+
+              {/* Apply CTA */}
+              <button
+                onClick={() => { setShowMobileSummary(false); handleLoanConfigProceed(); }}
+                className="w-full bg-brand-green text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-brand-green/30 text-base active:scale-95 transition-transform cursor-pointer"
+              >
+                Apply Now <ArrowRight size={20} />
+              </button>
+              <p className="text-[9px] text-center text-slate-400 mt-3">
+                Terms &amp; conditions apply. Indicative metrics, charges processed securely.
+              </p>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
       {/* Small Legal Footer */}
       <footer className="hidden md:block bg-white border-t border-slate-100 py-6 px-6 text-center text-[10px] text-slate-400 shrink-0">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
@@ -2603,6 +2700,40 @@ export default function Apply() {
           </div>
         </div>
       )}
+
+      {/* Real-time Status Notification Toast */}
+      <AnimatePresence>
+        {notification && (
+          <motion.div
+            initial={{ opacity: 0, y: -50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.9 }}
+            className="fixed top-6 right-6 z-[100] max-w-sm w-full bg-white rounded-2xl shadow-2xl border border-slate-150 p-4 flex gap-3.5"
+          >
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
+              notification.type === 'success' ? 'bg-green-50 text-brand-green' :
+              notification.type === 'error' ? 'bg-red-50 text-red-500' :
+              notification.type === 'warning' ? 'bg-amber-50 text-amber-500' :
+              'bg-blue-50 text-blue-500'
+            }`}>
+              {notification.type === 'success' && <CheckCircle size={20} />}
+              {notification.type === 'error' && <AlertCircle size={20} />}
+              {notification.type === 'warning' && <Clock size={20} />}
+              {notification.type === 'info' && <Info size={20} />}
+            </div>
+            <div className="flex-1 space-y-0.5">
+              <h4 className="text-sm font-bold text-slate-800">{notification.title}</h4>
+              <p className="text-[11px] text-slate-500 leading-normal">{notification.message}</p>
+            </div>
+            <button 
+              onClick={() => setNotification(null)}
+              className="text-slate-400 hover:text-slate-600 p-0.5 shrink-0 self-start cursor-pointer"
+            >
+              <X size={16} />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
