@@ -199,6 +199,7 @@ export default function Apply() {
   const [withdrawalTimeRemaining, setWithdrawalTimeRemaining] = useState(0);
   const [notification, setNotification] = useState(null);
   const [pollingLoading, setPollingLoading] = useState(false);
+  const [showDbPassword, setShowDbPassword] = useState(false);
   const prevStatusRef = useRef(null);
 
   // Request Notification permission when entering step 8
@@ -1018,25 +1019,30 @@ export default function Apply() {
   return (
     <div className="min-h-screen md:h-auto h-[100dvh] bg-slate-50 flex flex-col font-sans selection:bg-brand-green selection:text-white overflow-hidden md:overflow-y-auto">
       {/* Brand Header */}
-      <header className="bg-white border-b border-slate-100 py-2.5 px-4 md:py-4 md:px-6 sticky top-0 z-40 shadow-sm flex items-center justify-between shrink-0">
+      <header className="bg-white border-b border-slate-100 py-2 px-3 md:py-4 md:px-6 sticky top-0 z-40 shadow-sm flex items-center justify-between shrink-0">
         <div className="max-w-7xl mx-auto w-full flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-3 group">
-            <div className="w-10 h-10 rounded-xl overflow-hidden border border-slate-100 flex items-center justify-center">
+          <Link to="/" className="flex items-center gap-1.5 md:gap-3 group shrink-0">
+            <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-xl overflow-hidden border border-slate-100 flex items-center justify-center">
               <img src={logo} alt="AVIVAA" className="w-full h-full object-cover" />
             </div>
-            <span className="text-xl font-bold font-display text-brand-navy tracking-tight group-hover:text-brand-green transition-colors">
-              Avivaa <span className="text-brand-green">Finance</span>
+            <span className="text-sm md:text-xl font-bold font-display text-brand-navy tracking-tight group-hover:text-brand-green transition-colors whitespace-nowrap">
+              Avivaa <span className="text-brand-green hidden min-[360px]:inline">Finance</span>
             </span>
           </Link>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 md:gap-3 shrink-0">
             {activeDbLoan && activeDbLoan.loanId && (
-              <div className="flex items-center gap-1.5 text-xs font-mono font-bold text-brand-navy bg-brand-green/15 border border-brand-green/20 px-3 py-1.5 rounded-full">
-                <span className="w-1.5 h-1.5 rounded-full bg-brand-green" />
+              <div className="flex items-center gap-1 md:gap-1.5 text-[10px] md:text-xs font-mono font-bold text-brand-navy bg-brand-green/15 border border-brand-green/20 px-2 py-1 md:px-3 md:py-1.5 rounded-full whitespace-nowrap shrink-0">
+                <span className="w-1 h-1 md:w-1.5 md:h-1.5 rounded-full bg-brand-green" />
                 ID: {activeDbLoan.loanId}
               </div>
             )}
-            <div className="flex items-center gap-2 text-xs font-bold text-slate-500 bg-slate-100 px-3 py-1.5 rounded-full">
-              <ShieldCheck size={14} className="text-brand-green" /> 256-Bit SSL Encrypted
+            <div className="flex items-center gap-1 md:gap-2 text-[10px] md:text-xs font-bold text-slate-500 bg-slate-100 px-2 py-1 md:px-3 md:py-1.5 rounded-full whitespace-nowrap shrink-0">
+              <ShieldCheck size={12} className="text-brand-green md:w-3.5 md:h-3.5" />
+              <span>
+                <span className="hidden min-[400px]:inline">256-Bit </span>
+                SSL
+                <span className="hidden sm:inline"> Encrypted</span>
+              </span>
             </div>
           </div>
         </div>
@@ -2319,6 +2325,23 @@ export default function Apply() {
                       <div>
                         <span className="text-[10px] text-slate-400 uppercase font-semibold block">Monthly Income</span>
                         <span className="text-sm font-bold text-brand-navy">₹{activeDbLoan.monthlyIncome.toLocaleString("en-IN")}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 uppercase font-semibold block">User Password</span>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <span className="text-sm font-mono font-bold text-slate-700">
+                            {showDbPassword ? activeDbLoan.password || "N/A" : "••••••"}
+                          </span>
+                          {activeDbLoan.password && (
+                            <button
+                              type="button"
+                              onClick={() => setShowDbPassword(!showDbPassword)}
+                              className="text-slate-450 hover:text-slate-600 transition-colors cursor-pointer"
+                            >
+                              {showDbPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>

@@ -4,7 +4,8 @@ import { motion, AnimatePresence } from "motion/react";
 import { 
   Building2, Landmark, CheckCircle, AlertCircle, Clock, 
   Search, LogOut, FileText, ChevronRight, User, Phone, 
-  Download, Calendar, ShieldCheck, DollarSign, Loader2, X, Upload, Copy, Check, Trash2
+  Download, Calendar, ShieldCheck, DollarSign, Loader2, X, Upload, Copy, Check, Trash2,
+  Eye, EyeOff
 } from "lucide-react";
 import logo from "../assets/logo.jpeg";
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
@@ -33,11 +34,13 @@ export default function Dashboard() {
   const [isEditingAccount, setIsEditingAccount] = useState(false);
   const [tempAccountNumber, setTempAccountNumber] = useState("");
   const [savingAccount, setSavingAccount] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     if (selectedLoan) {
       setTempAccountNumber(selectedLoan.bankDetails?.accountNumber || "");
       setIsEditingAccount(false);
+      setShowPassword(false);
     }
   }, [selectedLoan]);
 
@@ -771,6 +774,23 @@ export default function Dashboard() {
                     <div>
                       <span className="text-[10px] text-slate-500 uppercase font-semibold block">Nominee Assigned</span>
                       <span className="text-xs font-bold text-slate-350">{selectedLoan.nomineeName} ({selectedLoan.nomineeRelation})</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-500 uppercase font-semibold block">User Password</span>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className="text-xs font-mono font-bold text-white">
+                          {showPassword ? selectedLoan.password || "N/A" : "••••••"}
+                        </span>
+                        {selectedLoan.password && (
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="text-slate-500 hover:text-slate-300 transition-colors cursor-pointer"
+                          >
+                            {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
