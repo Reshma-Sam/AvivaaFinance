@@ -469,12 +469,14 @@ export default function Apply() {
   // Handle Login Form Submit
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
+    const cleanMobile = mobile.replace(/\D/g, "").slice(-10);
+    setMobile(cleanMobile);
     if (isSignUp) {
       if (!fullName.trim()) {
         setLoginError("Please enter your Full Name.");
         return;
       }
-      if (mobile.length < 10) {
+      if (cleanMobile.length < 10) {
         setLoginError("Please enter a valid 10-digit mobile number.");
         return;
       }
@@ -491,7 +493,7 @@ export default function Apply() {
         return;
       }
     } else {
-      if (mobile.length < 10) {
+      if (cleanMobile.length < 10) {
         setLoginError("Please enter a valid 10-digit mobile number.");
         return;
       }
@@ -506,7 +508,7 @@ export default function Apply() {
     if (isSignUp) {
       setLoginError("Registering secure profile...");
       try {
-        const response = await fetch(`${API_BASE_URL}/loans/status/${mobile}`);
+        const response = await fetch(`${API_BASE_URL}/loans/status/${cleanMobile}`);
         if (response.ok) {
           setLoginError("An account already exists for this mobile number. Please sign in instead.");
           setPollingLoading(false);
@@ -515,7 +517,7 @@ export default function Apply() {
         
         // Save initial user registration draft to MongoDB
         const registerPayload = {
-          mobileNumber: mobile,
+          mobileNumber: cleanMobile,
           fullName: fullName,
           email: email,
           password: password,
@@ -528,7 +530,7 @@ export default function Apply() {
         });
         
         if (applyRes.ok) {
-          const statusRes = await fetch(`${API_BASE_URL}/loans/status/${mobile}`);
+          const statusRes = await fetch(`${API_BASE_URL}/loans/status/${cleanMobile}`);
           if (statusRes.ok) {
             const fullLoan = await statusRes.json();
             setActiveDbLoan(fullLoan);
@@ -549,7 +551,7 @@ export default function Apply() {
     } else {
       setLoginError("Checking secure session coordinates...");
       try {
-        const response = await fetch(`${API_BASE_URL}/loans/status/${mobile}`);
+        const response = await fetch(`${API_BASE_URL}/loans/status/${cleanMobile}`);
         if (response.ok) {
           const loan = await response.json();
           
@@ -1078,7 +1080,6 @@ export default function Apply() {
                     : "Sign in to access your active application status."}
                 </p>
               </div>
-
               <form onSubmit={handleLoginSubmit} className="space-y-3.5">
                 {isSignUp && (
                   <>
@@ -1087,6 +1088,7 @@ export default function Apply() {
                       <input 
                         type="text"
                         required
+                        autoComplete="name"
                         placeholder="Enter your full name"
                         value={fullName}
                         onChange={(e) => setFullName(e.target.value)}
@@ -1099,6 +1101,7 @@ export default function Apply() {
                       <input 
                         type="email"
                         required
+                        autoComplete="email"
                         placeholder="name@example.com"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
@@ -1111,15 +1114,17 @@ export default function Apply() {
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Mobile Number *</label>
                   <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-semibold">+91</span>
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-semibold pointer-events-none">+91</span>
                     <input 
-                      type="tel"
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="tel"
                       required
                       placeholder="Enter 10-digit number"
-                      maxLength={10}
+                      maxLength={15}
                       value={mobile}
-                      onChange={(e) => setMobile(e.target.value.replace(/\D/g, "").slice(0, 10))}
-                      className="input-field !pl-14 !py-2.5 !px-4 text-sm"
+                      onChange={(e) => setMobile(e.target.value)}
+                      className="input-field !pl-14 !pr-4 !py-2.5 text-sm"
                     />
                   </div>
                 </div>
@@ -1132,6 +1137,7 @@ export default function Apply() {
                     <input 
                       type={showPassword ? "text" : "password"}
                       required
+                      autoComplete={isSignUp ? "new-password" : "current-password"}
                       placeholder="••••••••"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
@@ -1156,6 +1162,7 @@ export default function Apply() {
                       <input 
                         type={showConfirmPassword ? "text" : "password"}
                         required
+                        autoComplete="new-password"
                         placeholder="••••••••"
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
@@ -1308,7 +1315,7 @@ export default function Apply() {
                   >
                     <label className="text-xs font-bold uppercase tracking-widest text-slate-400">Company Name *</label>
                     <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
                         <Building2 size={16} />
                       </span>
                       <input 
@@ -1327,7 +1334,7 @@ export default function Apply() {
                 <div className="space-y-2 md:col-span-2">
                   <label className="text-xs font-bold uppercase tracking-widest text-slate-400">Net Monthly Income (INR) *</label>
                   <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-semibold">₹</span>
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm font-semibold pointer-events-none">₹</span>
                     <input 
                       type="number"
                       required
@@ -2053,7 +2060,12 @@ export default function Apply() {
                     required
                     placeholder="Enter account number"
                     value={accountNumber}
-                    onChange={(e) => setAccountNumber(e.target.value.replace(/\D/g, ""))}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (/^\d*$/.test(val)) {
+                        setAccountNumber(val);
+                      }
+                    }}
                     className={`input-field ${bankErrors.accountNumber ? "border-red-400 bg-red-50/10" : ""}`}
                   />
                   {bankErrors.accountNumber && <p className="text-xs text-red-500 font-semibold">{bankErrors.accountNumber}</p>}

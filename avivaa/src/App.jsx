@@ -28,14 +28,7 @@ export default function App() {
             </ReactLenis>
           } 
         />
-        <Route 
-          path="/apply" 
-          element={
-            <ReactLenis root>
-              <Apply />
-            </ReactLenis>
-          } 
-        />
+        <Route path="/apply" element={<Apply />} />
 
         {/* Admin Pages (Native Scroll) */}
         <Route path="/dashboard" element={<Dashboard />} />
