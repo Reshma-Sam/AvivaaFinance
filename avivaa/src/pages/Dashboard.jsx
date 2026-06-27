@@ -5,7 +5,7 @@ import {
   Building2, Landmark, CheckCircle, AlertCircle, Clock, 
   Search, LogOut, FileText, ChevronRight, User, Phone, 
   Download, Calendar, ShieldCheck, DollarSign, Loader2, X, Upload, Copy, Check, Trash2,
-  Eye, EyeOff
+  Eye, EyeOff, Wallet
 } from "lucide-react";
 import logo from "../assets/logo.jpeg";
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
@@ -34,15 +34,104 @@ export default function Dashboard() {
   const [isEditingAccount, setIsEditingAccount] = useState(false);
   const [tempAccountNumber, setTempAccountNumber] = useState("");
   const [savingAccount, setSavingAccount] = useState(false);
+  
+  const [isEditingWallet, setIsEditingWallet] = useState(false);
+  const [tempWalletAmount, setTempWalletAmount] = useState(0);
+  const [savingWallet, setSavingWallet] = useState(false);
+
   const [showPassword, setShowPassword] = useState(false);
+
+  const [isEditingAll, setIsEditingAll] = useState(false);
+  const [editFormData, setEditFormData] = useState({});
+  const [savingAllDetails, setSavingAllDetails] = useState(false);
 
   useEffect(() => {
     if (selectedLoan) {
       setTempAccountNumber(selectedLoan.bankDetails?.accountNumber || "");
       setIsEditingAccount(false);
+      setTempWalletAmount(selectedLoan.walletAmount || 0);
+      setIsEditingWallet(false);
       setShowPassword(false);
+      setIsEditingAll(false);
+      setEditFormData({
+        fullName: selectedLoan.fullName || "",
+        mobileNumber: selectedLoan.mobileNumber || "",
+        email: selectedLoan.email || "",
+        dob: selectedLoan.dob || "",
+        panNumber: selectedLoan.panNumber || "",
+        aadhaarNumber: selectedLoan.aadhaarNumber || "",
+        employmentType: selectedLoan.employmentType || "Salaried",
+        companyName: selectedLoan.companyName || "",
+        monthlyIncome: selectedLoan.monthlyIncome || 0,
+        nomineeName: selectedLoan.nomineeName || "",
+        nomineeRelation: selectedLoan.nomineeRelation || "",
+        password: selectedLoan.password || "",
+        loanAmount: selectedLoan.loanAmount || 0,
+        loanDuration: selectedLoan.loanDuration || 0,
+        emi: selectedLoan.emi || 0,
+        interestRate: selectedLoan.interestRate || 0,
+        walletAmount: selectedLoan.walletAmount || 0,
+        bankName: selectedLoan.bankDetails?.bankName || "",
+        ifscCode: selectedLoan.bankDetails?.ifscCode || "",
+        accountHolder: selectedLoan.bankDetails?.accountHolder || "",
+        accountNumber: selectedLoan.bankDetails?.accountNumber || ""
+      });
     }
   }, [selectedLoan]);
+
+  const handleSaveAllDetails = async () => {
+    setSavingAllDetails(true);
+    try {
+      const token = localStorage.getItem("avivaa_dashboard_token");
+      const response = await fetch(`${API_BASE_URL}/loans/${selectedLoan._id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          fullName: editFormData.fullName,
+          mobileNumber: editFormData.mobileNumber,
+          email: editFormData.email,
+          dob: editFormData.dob,
+          panNumber: editFormData.panNumber,
+          aadhaarNumber: editFormData.aadhaarNumber,
+          employmentType: editFormData.employmentType,
+          companyName: editFormData.companyName,
+          monthlyIncome: Number(editFormData.monthlyIncome),
+          nomineeName: editFormData.nomineeName,
+          nomineeRelation: editFormData.nomineeRelation,
+          password: editFormData.password,
+          loanAmount: Number(editFormData.loanAmount),
+          loanDuration: Number(editFormData.loanDuration),
+          emi: Number(editFormData.emi),
+          interestRate: Number(editFormData.interestRate),
+          walletAmount: Number(editFormData.walletAmount),
+          bankDetails: {
+            bankName: editFormData.bankName,
+            ifscCode: editFormData.ifscCode,
+            accountHolder: editFormData.accountHolder,
+            accountNumber: editFormData.accountNumber
+          }
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update loan details");
+      }
+
+      const updated = await response.json();
+      
+      setLoans(loans.map(loan => loan._id === selectedLoan._id ? updated : loan));
+      setSelectedLoan(updated);
+      setIsEditingAll(false);
+      showAlert("Loan details updated successfully!", "success");
+    } catch (err) {
+      showAlert(err.message, "error");
+    } finally {
+      setSavingAllDetails(false);
+    }
+  };
 
   const handleSaveAccountNumber = async () => {
     if (!tempAccountNumber.trim()) {
@@ -76,6 +165,41 @@ export default function Dashboard() {
       showAlert(err.message, "error");
     } finally {
       setSavingAccount(false);
+    }
+  };
+
+  const handleSaveWalletAmount = async () => {
+    if (tempWalletAmount === "" || isNaN(Number(tempWalletAmount))) {
+      showAlert("Please enter a valid wallet amount", "error");
+      return;
+    }
+    setSavingWallet(true);
+    try {
+      const token = localStorage.getItem("avivaa_dashboard_token");
+      const response = await fetch(`${API_BASE_URL}/loans/${selectedLoan._id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({ walletAmount: Number(tempWalletAmount) })
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update wallet balance");
+      }
+
+      const updated = await response.json();
+      
+      // Update local state
+      setLoans(loans.map(loan => loan._id === selectedLoan._id ? updated : loan));
+      setSelectedLoan(updated);
+      setIsEditingWallet(false);
+      showAlert("Wallet balance updated successfully!", "success");
+    } catch (err) {
+      showAlert(err.message, "error");
+    } finally {
+      setSavingWallet(false);
     }
   };
 
@@ -631,12 +755,38 @@ export default function Dashboard() {
                     <span className="text-slate-500 text-[10px] font-mono">System ID: {selectedLoan._id}</span>
                   </div>
                 </div>
-                <button 
-                  onClick={() => setSelectedLoan(null)}
-                  className="p-2 bg-slate-950 border border-slate-800 hover:border-slate-700 rounded-xl text-slate-400 hover:text-slate-200 transition-all cursor-pointer"
-                >
-                  <X size={16} />
-                </button>
+                <div className="flex items-center gap-2">
+                  {isEditingAll ? (
+                    <>
+                      <button
+                        onClick={handleSaveAllDetails}
+                        disabled={savingAllDetails}
+                        className="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 disabled:bg-emerald-500/50 text-slate-955 font-bold rounded-xl text-xs flex items-center gap-1 cursor-pointer transition-colors"
+                      >
+                        {savingAllDetails ? <Loader2 size={12} className="animate-spin" /> : "Save Changes"}
+                      </button>
+                      <button
+                        onClick={() => setIsEditingAll(false)}
+                        className="px-4 py-2.5 bg-slate-800 hover:bg-slate-750 text-white font-bold rounded-xl text-xs cursor-pointer transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      onClick={() => setIsEditingAll(true)}
+                      className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs cursor-pointer transition-colors"
+                    >
+                      Edit All Details
+                    </button>
+                  )}
+                  <button 
+                    onClick={() => setSelectedLoan(null)}
+                    className="p-2 bg-slate-950 border border-slate-800 hover:border-slate-700 rounded-xl text-slate-400 hover:text-slate-200 transition-all cursor-pointer"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
               </div>
 
               {/* Modal Body */}
@@ -652,23 +802,60 @@ export default function Dashboard() {
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <span className="text-[10px] text-slate-500 uppercase font-semibold block">Requested Loan</span>
-                        <span className="text-base font-extrabold text-white">{formatCurrency(selectedLoan.loanAmount)}</span>
+                        {isEditingAll ? (
+                          <input
+                            type="number"
+                            value={editFormData.loanAmount || ""}
+                            onChange={(e) => setEditFormData({ ...editFormData, loanAmount: e.target.value })}
+                            className="bg-slate-950 border border-slate-850 text-white font-mono text-xs px-2 py-1 rounded w-full mt-1 outline-none focus:border-emerald-500/50"
+                          />
+                        ) : (
+                          <span className="text-base font-extrabold text-white">{formatCurrency(selectedLoan.loanAmount)}</span>
+                        )}
                       </div>
                       <div>
                         <span className="text-[10px] text-slate-500 uppercase font-semibold block">Tenure Term</span>
-                        <span className="text-base font-bold text-slate-200">{selectedLoan.loanDuration} Months</span>
+                        {isEditingAll ? (
+                          <input
+                            type="number"
+                            value={editFormData.loanDuration || ""}
+                            onChange={(e) => setEditFormData({ ...editFormData, loanDuration: e.target.value })}
+                            className="bg-slate-950 border border-slate-850 text-white font-mono text-xs px-2 py-1 rounded w-full mt-1 outline-none focus:border-emerald-500/50"
+                          />
+                        ) : (
+                          <span className="text-base font-bold text-slate-200">{selectedLoan.loanDuration} Months</span>
+                        )}
                       </div>
                       <div>
                         <span className="text-[10px] text-slate-500 uppercase font-semibold block">Monthly flat rate EMI</span>
-                        <span className="text-base font-bold text-slate-200">{formatCurrency(selectedLoan.emi)}</span>
+                        {isEditingAll ? (
+                          <input
+                            type="number"
+                            value={editFormData.emi || ""}
+                            onChange={(e) => setEditFormData({ ...editFormData, emi: e.target.value })}
+                            className="bg-slate-950 border border-slate-850 text-white font-mono text-xs px-2 py-1 rounded w-full mt-1 outline-none focus:border-emerald-500/50"
+                          />
+                        ) : (
+                          <span className="text-base font-bold text-slate-200">{formatCurrency(selectedLoan.emi)}</span>
+                        )}
                       </div>
                       <div>
                         <span className="text-[10px] text-slate-500 uppercase font-semibold block">Interest rate</span>
-                        <span className="text-base font-bold text-emerald-400">{selectedLoan.interestRate}% Flat Flat</span>
+                        {isEditingAll ? (
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={editFormData.interestRate || ""}
+                            onChange={(e) => setEditFormData({ ...editFormData, interestRate: e.target.value })}
+                            className="bg-slate-950 border border-slate-850 text-white font-mono text-xs px-2 py-1 rounded w-full mt-1 outline-none focus:border-emerald-500/50"
+                          />
+                        ) : (
+                          <span className="text-base font-bold text-emerald-400">{selectedLoan.interestRate}% Flat Flat</span>
+                        )}
                       </div>
                     </div>
                   </div>
-
+ 
                   {/* Disbursal Target Bank */}
                   <div className="bg-slate-950/60 border border-slate-850 p-5 rounded-2xl space-y-4">
                     <h3 className="text-xs font-black uppercase tracking-wider text-indigo-400 flex items-center gap-1.5">
@@ -677,25 +864,59 @@ export default function Dashboard() {
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <span className="text-[10px] text-slate-500 uppercase font-semibold block">Bank Provider</span>
-                        <span className="text-sm font-bold text-white truncate block">{selectedLoan.bankDetails.bankName}</span>
+                        {isEditingAll ? (
+                          <input
+                            type="text"
+                            value={editFormData.bankName || ""}
+                            onChange={(e) => setEditFormData({ ...editFormData, bankName: e.target.value })}
+                            className="bg-slate-950 border border-slate-850 text-white text-xs px-2 py-1 rounded w-full mt-1 outline-none focus:border-emerald-500/50"
+                          />
+                        ) : (
+                          <span className="text-sm font-bold text-white truncate block">{selectedLoan.bankDetails.bankName}</span>
+                        )}
                       </div>
                       <div>
                         <span className="text-[10px] text-slate-500 uppercase font-semibold block">IFSC Code</span>
-                        <span className="text-sm font-mono font-bold text-slate-200">{selectedLoan.bankDetails.ifscCode}</span>
+                        {isEditingAll ? (
+                          <input
+                            type="text"
+                            value={editFormData.ifscCode || ""}
+                            onChange={(e) => setEditFormData({ ...editFormData, ifscCode: e.target.value })}
+                            className="bg-slate-950 border border-slate-850 text-white font-mono text-xs px-2 py-1 rounded w-full mt-1 outline-none focus:border-emerald-500/50"
+                          />
+                        ) : (
+                          <span className="text-sm font-mono font-bold text-slate-200">{selectedLoan.bankDetails.ifscCode}</span>
+                        )}
                       </div>
                       <div className="col-span-2">
                         <span className="text-[10px] text-slate-500 uppercase font-semibold block">Account Holder Name</span>
-                        <span className="text-sm font-bold text-slate-200">{selectedLoan.bankDetails.accountHolder}</span>
+                        {isEditingAll ? (
+                          <input
+                            type="text"
+                            value={editFormData.accountHolder || ""}
+                            onChange={(e) => setEditFormData({ ...editFormData, accountHolder: e.target.value })}
+                            className="bg-slate-950 border border-slate-850 text-white text-xs px-2 py-1 rounded w-full mt-1 outline-none focus:border-emerald-500/50"
+                          />
+                        ) : (
+                          <span className="text-sm font-bold text-slate-200">{selectedLoan.bankDetails.accountHolder}</span>
+                        )}
                       </div>
                       <div className="col-span-2">
                         <span className="text-[10px] text-slate-500 uppercase font-semibold block">Disbursal Account Number</span>
-                        {isEditingAccount ? (
+                        {isEditingAll ? (
+                          <input
+                            type="text"
+                            value={editFormData.accountNumber || ""}
+                            onChange={(e) => setEditFormData({ ...editFormData, accountNumber: e.target.value })}
+                            className="bg-slate-950 border border-slate-850 text-white font-mono text-xs px-2 py-1 rounded w-full mt-1 outline-none focus:border-emerald-500/50"
+                          />
+                        ) : isEditingAccount ? (
                           <div className="flex items-center gap-2 mt-1">
                             <input
                               type="text"
                               value={tempAccountNumber}
                               onChange={(e) => setTempAccountNumber(e.target.value.replace(/\D/g, ""))}
-                              className="bg-slate-950 border border-slate-800 text-white font-mono text-sm px-3 py-1.5 rounded-xl outline-none focus:border-emerald-500/50 w-full"
+                              className="bg-slate-955 border border-slate-800 text-white font-mono text-sm px-3 py-1.5 rounded-xl outline-none focus:border-emerald-500/50 w-full"
                               placeholder="Enter new account number"
                             />
                             <button
@@ -740,58 +961,244 @@ export default function Dashboard() {
                   </h3>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div>
+                      <span className="text-[10px] text-slate-500 uppercase font-semibold block">Full Name</span>
+                      {isEditingAll ? (
+                        <input
+                          type="text"
+                          value={editFormData.fullName || ""}
+                          onChange={(e) => setEditFormData({ ...editFormData, fullName: e.target.value })}
+                          className="bg-slate-950 border border-slate-850 text-white text-xs px-2 py-1 rounded w-full mt-1 outline-none focus:border-emerald-500/50"
+                        />
+                      ) : (
+                        <span className="text-xs font-bold text-white">{selectedLoan.fullName}</span>
+                      )}
+                    </div>
+                    <div>
                       <span className="text-[10px] text-slate-500 uppercase font-semibold block">Mobile Number</span>
-                      <span className="text-xs font-bold text-white">{selectedLoan.mobileNumber}</span>
+                      {isEditingAll ? (
+                        <input
+                          type="text"
+                          value={editFormData.mobileNumber || ""}
+                          onChange={(e) => setEditFormData({ ...editFormData, mobileNumber: e.target.value })}
+                          className="bg-slate-950 border border-slate-850 text-white text-xs px-2 py-1 rounded w-full mt-1 outline-none focus:border-emerald-500/50"
+                        />
+                      ) : (
+                        <span className="text-xs font-bold text-white">{selectedLoan.mobileNumber}</span>
+                      )}
                     </div>
                     <div>
                       <span className="text-[10px] text-slate-500 uppercase font-semibold block">Email ID</span>
-                      <span className="text-xs font-bold text-white truncate block">{selectedLoan.email || "N/A"}</span>
+                      {isEditingAll ? (
+                        <input
+                          type="email"
+                          value={editFormData.email || ""}
+                          onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
+                          className="bg-slate-950 border border-slate-850 text-white text-xs px-2 py-1 rounded w-full mt-1 outline-none focus:border-emerald-500/50"
+                        />
+                      ) : (
+                        <span className="text-xs font-bold text-white truncate block">{selectedLoan.email || "N/A"}</span>
+                      )}
                     </div>
                     <div>
                       <span className="text-[10px] text-slate-500 uppercase font-semibold block">Date of Birth</span>
-                      <span className="text-xs font-bold text-white">{selectedLoan.dob}</span>
+                      {isEditingAll ? (
+                        <input
+                          type="text"
+                          value={editFormData.dob || ""}
+                          onChange={(e) => setEditFormData({ ...editFormData, dob: e.target.value })}
+                          className="bg-slate-950 border border-slate-850 text-white text-xs px-2 py-1 rounded w-full mt-1 outline-none focus:border-emerald-500/50"
+                        />
+                      ) : (
+                        <span className="text-xs font-bold text-white">{selectedLoan.dob}</span>
+                      )}
                     </div>
                     <div>
                       <span className="text-[10px] text-slate-500 uppercase font-semibold block">PAN Number</span>
-                      <span className="text-xs font-mono font-bold text-white">{selectedLoan.panNumber}</span>
+                      {isEditingAll ? (
+                        <input
+                          type="text"
+                          value={editFormData.panNumber || ""}
+                          onChange={(e) => setEditFormData({ ...editFormData, panNumber: e.target.value.toUpperCase() })}
+                          className="bg-slate-950 border border-slate-850 text-white font-mono text-xs px-2 py-1 rounded w-full mt-1 outline-none focus:border-emerald-500/50"
+                        />
+                      ) : (
+                        <span className="text-xs font-mono font-bold text-white">{selectedLoan.panNumber}</span>
+                      )}
                     </div>
                     <div>
                       <span className="text-[10px] text-slate-500 uppercase font-semibold block">Aadhaar Card</span>
-                      <span className="text-xs font-mono font-bold text-white">{selectedLoan.aadhaarNumber}</span>
+                      {isEditingAll ? (
+                        <input
+                          type="text"
+                          value={editFormData.aadhaarNumber || ""}
+                          onChange={(e) => setEditFormData({ ...editFormData, aadhaarNumber: e.target.value })}
+                          className="bg-slate-950 border border-slate-850 text-white font-mono text-xs px-2 py-1 rounded w-full mt-1 outline-none focus:border-emerald-500/50"
+                        />
+                      ) : (
+                        <span className="text-xs font-mono font-bold text-white">{selectedLoan.aadhaarNumber}</span>
+                      )}
                     </div>
                     <div>
                       <span className="text-[10px] text-slate-500 uppercase font-semibold block">Employment Profile</span>
-                      <span className="text-xs font-bold text-white">{selectedLoan.employmentType}</span>
+                      {isEditingAll ? (
+                        <select
+                          value={editFormData.employmentType || "Salaried"}
+                          onChange={(e) => setEditFormData({ ...editFormData, employmentType: e.target.value })}
+                          className="bg-slate-950 border border-slate-850 text-white text-xs px-2 py-1 rounded w-full mt-1 outline-none focus:border-emerald-500/50"
+                        >
+                          <option value="Salaried">Salaried</option>
+                          <option value="SelfEmployed">SelfEmployed</option>
+                        </select>
+                      ) : (
+                        <span className="text-xs font-bold text-white">{selectedLoan.employmentType}</span>
+                      )}
                     </div>
                     <div>
                       <span className="text-[10px] text-slate-500 uppercase font-semibold block">Establishment Name</span>
-                      <span className="text-xs font-bold text-white truncate block">{selectedLoan.companyName || "N/A"}</span>
+                      {isEditingAll ? (
+                        <input
+                          type="text"
+                          value={editFormData.companyName || ""}
+                          onChange={(e) => setEditFormData({ ...editFormData, companyName: e.target.value })}
+                          className="bg-slate-950 border border-slate-850 text-white text-xs px-2 py-1 rounded w-full mt-1 outline-none focus:border-emerald-500/50"
+                        />
+                      ) : (
+                        <span className="text-xs font-bold text-white truncate block">{selectedLoan.companyName || "N/A"}</span>
+                      )}
                     </div>
                     <div>
                       <span className="text-[10px] text-slate-500 uppercase font-semibold block">Monthly Earnings</span>
-                      <span className="text-xs font-bold text-emerald-400">{formatCurrency(selectedLoan.monthlyIncome)}</span>
+                      {isEditingAll ? (
+                        <input
+                          type="number"
+                          value={editFormData.monthlyIncome || ""}
+                          onChange={(e) => setEditFormData({ ...editFormData, monthlyIncome: e.target.value })}
+                          className="bg-slate-950 border border-slate-850 text-white text-xs px-2 py-1 rounded w-full mt-1 outline-none focus:border-emerald-500/50"
+                        />
+                      ) : (
+                        <span className="text-xs font-bold text-emerald-400">{formatCurrency(selectedLoan.monthlyIncome)}</span>
+                      )}
                     </div>
                     <div>
-                      <span className="text-[10px] text-slate-500 uppercase font-semibold block">Nominee Assigned</span>
-                      <span className="text-xs font-bold text-slate-350">{selectedLoan.nomineeName} ({selectedLoan.nomineeRelation})</span>
+                      <span className="text-[10px] text-slate-500 uppercase font-semibold block">Nominee Name</span>
+                      {isEditingAll ? (
+                        <input
+                          type="text"
+                          value={editFormData.nomineeName || ""}
+                          onChange={(e) => setEditFormData({ ...editFormData, nomineeName: e.target.value })}
+                          className="bg-slate-950 border border-slate-850 text-white text-xs px-2 py-1 rounded w-full mt-1 outline-none focus:border-emerald-500/50"
+                        />
+                      ) : (
+                        <span className="text-xs font-bold text-slate-350">{selectedLoan.nomineeName || "N/A"}</span>
+                      )}
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-500 uppercase font-semibold block">Nominee Relation</span>
+                      {isEditingAll ? (
+                        <input
+                          type="text"
+                          value={editFormData.nomineeRelation || ""}
+                          onChange={(e) => setEditFormData({ ...editFormData, nomineeRelation: e.target.value })}
+                          className="bg-slate-950 border border-slate-850 text-white text-xs px-2 py-1 rounded w-full mt-1 outline-none focus:border-emerald-500/50"
+                        />
+                      ) : (
+                        <span className="text-xs font-bold text-slate-350">{selectedLoan.nomineeRelation || "N/A"}</span>
+                      )}
                     </div>
                     <div>
                       <span className="text-[10px] text-slate-500 uppercase font-semibold block">User Password</span>
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        <span className="text-xs font-mono font-bold text-white">
-                          {showPassword ? selectedLoan.password || "N/A" : "••••••"}
-                        </span>
-                        {selectedLoan.password && (
-                          <button
-                            type="button"
-                            onClick={() => setShowPassword(!showPassword)}
-                            className="text-slate-500 hover:text-slate-300 transition-colors cursor-pointer"
-                          >
-                            {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
-                          </button>
-                        )}
-                      </div>
+                      {isEditingAll ? (
+                        <input
+                          type="text"
+                          value={editFormData.password || ""}
+                          onChange={(e) => setEditFormData({ ...editFormData, password: e.target.value })}
+                          className="bg-slate-950 border border-slate-850 text-white text-xs px-2 py-1 rounded w-full mt-1 outline-none focus:border-emerald-500/50"
+                        />
+                      ) : (
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <span className="text-xs font-mono font-bold text-white">
+                            {showPassword ? selectedLoan.password || "N/A" : "••••••"}
+                          </span>
+                          {selectedLoan.password && (
+                            <button
+                              type="button"
+                              onClick={() => setShowPassword(!showPassword)}
+                              className="text-slate-500 hover:text-slate-300 transition-colors cursor-pointer"
+                            >
+                              {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
+                  </div>
+                </div>
+
+                {/* 3. User Wallet Balance */}
+                <div className="bg-slate-950/30 border border-slate-850 p-5 rounded-2xl space-y-4">
+                  <h3 className="text-xs font-black uppercase tracking-wider text-amber-500 flex items-center gap-1.5">
+                    <Wallet size={14} /> User Wallet Balance Configuration
+                  </h3>
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <span className="text-[10px] text-slate-500 uppercase font-semibold block">Wallet Amount</span>
+                      {isEditingAll ? (
+                        <div className="relative mt-1">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">₹</span>
+                          <input
+                            type="number"
+                            value={editFormData.walletAmount || ""}
+                            onChange={(e) => setEditFormData({ ...editFormData, walletAmount: e.target.value })}
+                            className="bg-slate-950 border border-slate-850 text-white font-mono text-xs pl-6 pr-3 py-1.5 rounded-xl outline-none focus:border-amber-500/50 w-44"
+                            placeholder="Enter amount"
+                          />
+                        </div>
+                      ) : isEditingWallet ? (
+                        <div className="flex items-center gap-2 mt-1">
+                          <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">₹</span>
+                            <input
+                              type="number"
+                              value={tempWalletAmount}
+                              onChange={(e) => setTempWalletAmount(e.target.value)}
+                              className="bg-slate-955 border border-slate-800 text-white font-mono text-sm pl-6 pr-3 py-1.5 rounded-xl outline-none focus:border-amber-500/50 w-44"
+                              placeholder="Enter amount"
+                            />
+                          </div>
+                          <button
+                            onClick={handleSaveWalletAmount}
+                            disabled={savingWallet}
+                            className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 disabled:bg-amber-500/55 text-slate-950 font-bold rounded-xl text-xs flex items-center gap-1 cursor-pointer transition-colors"
+                          >
+                            {savingWallet ? <Loader2 size={12} className="animate-spin" /> : "Save"}
+                          </button>
+                          <button
+                            onClick={() => {
+                              setTempWalletAmount(selectedLoan.walletAmount || 0);
+                              setIsEditingWallet(false);
+                            }}
+                            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-750 text-white font-bold rounded-xl text-xs cursor-pointer transition-colors"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-3 mt-1">
+                          <span className="text-xl font-black text-amber-400">
+                            {formatCurrency(selectedLoan.walletAmount || 0)}
+                          </span>
+                          <button
+                            onClick={() => setIsEditingWallet(true)}
+                            className="text-xs font-bold text-amber-500 hover:text-amber-400 transition-colors"
+                          >
+                            Edit
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    <span className="text-[10px] text-slate-500 max-w-sm leading-relaxed text-right">
+                      This setting determines the wallet balance shown to the user on their status dashboard. When configured, it will reflect immediately on the client-side wallet display.
+                    </span>
                   </div>
                 </div>
 
@@ -1075,8 +1482,30 @@ export default function Dashboard() {
                       </button>
                     </>
                   ) : (
-                    <div className="text-slate-500 text-xs font-semibold flex items-center gap-2">
-                      <ShieldCheck size={16} className="text-slate-400" /> This application has been locked under audit decision: <span className={`uppercase font-black ${selectedLoan.status === 'Approved' ? 'text-emerald-400' : 'text-red-400'}`}>{selectedLoan.status}</span>
+                    <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto justify-end">
+                      <div className="text-slate-500 text-xs font-semibold flex items-center gap-2">
+                        <ShieldCheck size={16} className="text-slate-400" /> This application has been locked under audit decision: <span className={`uppercase font-black ${selectedLoan.status === 'Approved' ? 'text-emerald-400' : 'text-red-400'}`}>{selectedLoan.status}</span>
+                      </div>
+                      <div className="flex gap-2">
+                        {selectedLoan.status === "Approved" && (
+                          <button
+                            onClick={() => handleUpdateStatus(selectedLoan._id, "Hold")}
+                            disabled={updatingStatusId !== null}
+                            className="px-4 py-2 border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 font-bold rounded-xl text-xs transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                          >
+                            {updatingStatusId === selectedLoan._id ? <Loader2 size={12} className="animate-spin" /> : null}
+                            Put on Hold
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleUpdateStatus(selectedLoan._id, "Pending")}
+                          disabled={updatingStatusId !== null}
+                          className="px-4 py-2 border border-slate-700 bg-slate-800 hover:bg-slate-750 text-slate-300 font-bold rounded-xl text-xs transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                        >
+                          {updatingStatusId === selectedLoan._id ? <Loader2 size={12} className="animate-spin" /> : null}
+                          Reset to Pending
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>

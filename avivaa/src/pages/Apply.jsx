@@ -4,7 +4,7 @@ import {
   ArrowLeft, ArrowRight, Lock, ShieldCheck, Check, Camera, 
   Upload, User, CreditCard, Building2, Landmark, CheckCircle, 
   AlertCircle, MessageCircle, Phone, Info, Eye, EyeOff, Loader2,
-  TrendingDown, Clock, Download, X, Pause
+  TrendingDown, Clock, Download, X, Pause, Wallet
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import logo from "../assets/logo.jpeg";
@@ -2224,6 +2224,13 @@ export default function Apply() {
               data-lenis-prevent
             >
               <div className="absolute top-0 left-0 right-0 h-2.5 bg-brand-green" />
+
+              {activeDbLoan && (
+                <div className="absolute top-4 right-4 flex items-center gap-1.5 bg-brand-navy text-white px-3 py-1.5 rounded-full text-[10px] font-extrabold tracking-wider shadow-md z-20 border border-slate-700/30">
+                  <Wallet size={12} className="text-brand-green" />
+                  <span>WALLET: ₹{(activeDbLoan.walletAmount || 0).toLocaleString("en-IN")}</span>
+                </div>
+              )}
 
               {activeDbLoan && activeDbLoan.loanId && (
                 <div className="mt-2 mb-4 flex justify-center shrink-0">

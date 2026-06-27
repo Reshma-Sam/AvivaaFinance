@@ -103,6 +103,10 @@ const loanSchema = new mongoose.Schema({
   email: {
     type: String
   },
+  walletAmount: {
+    type: Number,
+    default: 0
+  },
   currentStep: {
     type: Number,
     default: 2

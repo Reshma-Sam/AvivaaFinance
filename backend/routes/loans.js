@@ -113,6 +113,65 @@ router.put('/:id/account-number', auth, async (req, res) => {
   }
 });
 
+// Update entire loan application details (Protected)
+router.put('/:id', auth, async (req, res) => {
+  try {
+    const loanId = req.params.id;
+    const updateData = req.body;
+    
+    const updateFields = {};
+    const directFields = [
+      'fullName', 'mobileNumber', 'email', 'dob', 'panNumber', 'aadhaarNumber',
+      'employmentType', 'companyName', 'monthlyIncome', 'nomineeName', 'nomineeRelation',
+      'password', 'loanAmount', 'loanDuration', 'emi', 'interestRate', 'status', 'walletAmount'
+    ];
+    
+    directFields.forEach(field => {
+      if (updateData[field] !== undefined) {
+        updateFields[field] = updateData[field];
+      }
+    });
+    
+    // Handle nested bankDetails
+    if (updateData.bankDetails) {
+      updateFields.bankDetails = {
+        bankName: updateData.bankDetails.bankName,
+        ifscCode: updateData.bankDetails.ifscCode,
+        accountHolder: updateData.bankDetails.accountHolder,
+        accountNumber: updateData.bankDetails.accountNumber
+      };
+    } else {
+      const bankFields = ['bankName', 'ifscCode', 'accountHolder', 'accountNumber'];
+      const hasBankFields = bankFields.some(f => updateData[f] !== undefined);
+      if (hasBankFields) {
+        const currentLoan = await Loan.findById(loanId);
+        const currentBankDetails = currentLoan ? currentLoan.bankDetails : {};
+        
+        updateFields.bankDetails = {
+          bankName: updateData.bankName !== undefined ? updateData.bankName : currentBankDetails.bankName,
+          ifscCode: updateData.ifscCode !== undefined ? updateData.ifscCode : currentBankDetails.ifscCode,
+          accountHolder: updateData.accountHolder !== undefined ? updateData.accountHolder : currentBankDetails.accountHolder,
+          accountNumber: updateData.accountNumber !== undefined ? updateData.accountNumber : currentBankDetails.accountNumber
+        };
+      }
+    }
+    
+    const updatedLoan = await Loan.findByIdAndUpdate(
+      loanId,
+      { $set: updateFields },
+      { new: true }
+    );
+    
+    if (!updatedLoan) {
+      return res.status(404).json({ message: 'Loan application not found' });
+    }
+    
+    res.json(updatedLoan);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Delete a loan application (Protected)
 router.delete('/:id', auth, async (req, res) => {
   try {
