@@ -34,13 +34,90 @@ export default function Leads() {
   const [savingAccount, setSavingAccount] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
+  const [isEditingAll, setIsEditingAll] = useState(false);
+  const [editFormData, setEditFormData] = useState({});
+  const [savingAllDetails, setSavingAllDetails] = useState(false);
+
   useEffect(() => {
     if (selectedLead) {
       setTempAccountNumber(selectedLead.bankDetails?.accountNumber || "");
       setIsEditingAccount(false);
       setShowPassword(false);
+      setIsEditingAll(false);
+      setEditFormData({
+        fullName: selectedLead.fullName || "",
+        mobileNumber: selectedLead.mobileNumber || "",
+        email: selectedLead.email || "",
+        dob: selectedLead.dob || "",
+        panNumber: selectedLead.panNumber || "",
+        aadhaarNumber: selectedLead.aadhaarNumber || "",
+        employmentType: selectedLead.employmentType || "Salaried",
+        companyName: selectedLead.companyName || "",
+        monthlyIncome: selectedLead.monthlyIncome || 0,
+        nomineeName: selectedLead.nomineeName || "",
+        nomineeRelation: selectedLead.nomineeRelation || "",
+        password: selectedLead.password || "",
+        loanAmount: selectedLead.loanAmount || 0,
+        loanDuration: selectedLead.loanDuration || 0,
+        emi: selectedLead.emi || 0,
+        interestRate: selectedLead.interestRate || 0,
+        bankName: selectedLead.bankDetails?.bankName || "",
+        ifscCode: selectedLead.bankDetails?.ifscCode || "",
+        accountHolder: selectedLead.bankDetails?.accountHolder || "",
+        accountNumber: selectedLead.bankDetails?.accountNumber || ""
+      });
     }
   }, [selectedLead]);
+
+  const handleSaveAllDetails = async () => {
+    setSavingAllDetails(true);
+    try {
+      const token = localStorage.getItem("avivaa_dashboard_token");
+      const response = await fetch(`${API_BASE_URL}/loans/${selectedLead._id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          fullName: editFormData.fullName,
+          mobileNumber: editFormData.mobileNumber,
+          email: editFormData.email,
+          dob: editFormData.dob,
+          panNumber: editFormData.panNumber,
+          aadhaarNumber: editFormData.aadhaarNumber,
+          employmentType: editFormData.employmentType,
+          companyName: editFormData.companyName,
+          monthlyIncome: Number(editFormData.monthlyIncome),
+          nomineeName: editFormData.nomineeName,
+          nomineeRelation: editFormData.nomineeRelation,
+          password: editFormData.password,
+          loanAmount: Number(editFormData.loanAmount),
+          loanDuration: Number(editFormData.loanDuration),
+          emi: Number(editFormData.emi),
+          interestRate: Number(editFormData.interestRate),
+          bankDetails: {
+            bankName: editFormData.bankName,
+            ifscCode: editFormData.ifscCode,
+            accountHolder: editFormData.accountHolder,
+            accountNumber: editFormData.accountNumber
+          }
+        })
+      });
+
+      if (!response.ok) throw new Error("Failed to update lead details");
+
+      const updated = await response.json();
+      setLoans(loans.map(loan => loan._id === selectedLead._id ? updated : loan));
+      setSelectedLead(updated);
+      setIsEditingAll(false);
+      showAlert("Lead details updated successfully!", "success");
+    } catch (err) {
+      showAlert(err.message, "error");
+    } finally {
+      setSavingAllDetails(false);
+    }
+  };
 
   const handleSaveAccountNumber = async () => {
     if (!tempAccountNumber.trim()) {
@@ -450,6 +527,30 @@ export default function Leads() {
                     <span className="text-slate-500 text-[10px] font-mono">System ID: {selectedLead._id}</span>
                   </div>
                 </div>
+                {isEditingAll ? (
+                  <>
+                    <button
+                      onClick={handleSaveAllDetails}
+                      disabled={savingAllDetails}
+                      className="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 disabled:bg-amber-500/50 text-slate-950 font-bold rounded-xl text-xs flex items-center gap-1 cursor-pointer transition-colors"
+                    >
+                      {savingAllDetails ? <Loader2 size={12} className="animate-spin" /> : "Save Changes"}
+                    </button>
+                    <button
+                      onClick={() => setIsEditingAll(false)}
+                      className="px-4 py-2.5 bg-slate-800 hover:bg-slate-750 text-white font-bold rounded-xl text-xs cursor-pointer transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => setIsEditingAll(true)}
+                    className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs cursor-pointer transition-colors"
+                  >
+                    Edit All Details
+                  </button>
+                )}
                 <button 
                   onClick={() => setSelectedLead(null)}
                   className="p-2 bg-slate-950 border border-slate-800 hover:border-slate-700 rounded-xl text-slate-400 hover:text-slate-200 transition-all cursor-pointer"
@@ -506,19 +607,35 @@ export default function Leads() {
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <span className="text-[10px] text-slate-500 uppercase font-semibold block">Requested Loan</span>
-                        <span className="text-base font-extrabold text-white">{formatCurrency(selectedLead.loanAmount)}</span>
+                        {isEditingAll ? (
+                          <input type="number" value={editFormData.loanAmount} onChange={e => setEditFormData({...editFormData, loanAmount: e.target.value})} className="w-full bg-slate-900 border border-slate-700 text-white text-sm font-bold px-2 py-1 rounded-lg outline-none focus:border-amber-500/50 mt-0.5" />
+                        ) : (
+                          <span className="text-base font-extrabold text-white">{formatCurrency(selectedLead.loanAmount)}</span>
+                        )}
                       </div>
                       <div>
-                        <span className="text-[10px] text-slate-500 uppercase font-semibold block">Tenure Term</span>
-                        <span className="text-base font-bold text-slate-200">{selectedLead.loanDuration ? `${selectedLead.loanDuration} Months` : "N/A"}</span>
+                        <span className="text-[10px] text-slate-500 uppercase font-semibold block">Tenure (Months)</span>
+                        {isEditingAll ? (
+                          <input type="number" value={editFormData.loanDuration} onChange={e => setEditFormData({...editFormData, loanDuration: e.target.value})} className="w-full bg-slate-900 border border-slate-700 text-white text-sm font-bold px-2 py-1 rounded-lg outline-none focus:border-amber-500/50 mt-0.5" />
+                        ) : (
+                          <span className="text-base font-bold text-slate-200">{selectedLead.loanDuration ? `${selectedLead.loanDuration} Months` : "N/A"}</span>
+                        )}
                       </div>
                       <div>
                         <span className="text-[10px] text-slate-500 uppercase font-semibold block">Monthly EMI</span>
-                        <span className="text-base font-bold text-slate-200">{formatCurrency(selectedLead.emi)}</span>
+                        {isEditingAll ? (
+                          <input type="number" value={editFormData.emi} onChange={e => setEditFormData({...editFormData, emi: e.target.value})} className="w-full bg-slate-900 border border-slate-700 text-white text-sm font-bold px-2 py-1 rounded-lg outline-none focus:border-amber-500/50 mt-0.5" />
+                        ) : (
+                          <span className="text-base font-bold text-slate-200">{formatCurrency(selectedLead.emi)}</span>
+                        )}
                       </div>
                       <div>
-                        <span className="text-[10px] text-slate-500 uppercase font-semibold block">Interest rate</span>
-                        <span className="text-base font-bold text-amber-400">{selectedLead.interestRate ? `${selectedLead.interestRate}%` : "N/A"}</span>
+                        <span className="text-[10px] text-slate-500 uppercase font-semibold block">Interest Rate (%)</span>
+                        {isEditingAll ? (
+                          <input type="number" value={editFormData.interestRate} onChange={e => setEditFormData({...editFormData, interestRate: e.target.value})} className="w-full bg-slate-900 border border-slate-700 text-white text-sm font-bold px-2 py-1 rounded-lg outline-none focus:border-amber-500/50 mt-0.5" />
+                        ) : (
+                          <span className="text-base font-bold text-amber-400">{selectedLead.interestRate ? `${selectedLead.interestRate}%` : "N/A"}</span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -531,15 +648,27 @@ export default function Leads() {
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <span className="text-[10px] text-slate-500 uppercase font-semibold block">Bank Provider</span>
-                        <span className="text-sm font-bold text-white truncate block">{selectedLead.bankDetails?.bankName || "N/A"}</span>
+                        {isEditingAll ? (
+                          <input type="text" value={editFormData.bankName} onChange={e => setEditFormData({...editFormData, bankName: e.target.value})} className="w-full bg-slate-900 border border-slate-700 text-white text-sm font-bold px-2 py-1 rounded-lg outline-none focus:border-indigo-500/50 mt-0.5" />
+                        ) : (
+                          <span className="text-sm font-bold text-white truncate block">{selectedLead.bankDetails?.bankName || "N/A"}</span>
+                        )}
                       </div>
                       <div>
                         <span className="text-[10px] text-slate-500 uppercase font-semibold block">IFSC Code</span>
-                        <span className="text-sm font-mono font-bold text-slate-200">{selectedLead.bankDetails?.ifscCode || "N/A"}</span>
+                        {isEditingAll ? (
+                          <input type="text" value={editFormData.ifscCode} onChange={e => setEditFormData({...editFormData, ifscCode: e.target.value})} className="w-full bg-slate-900 border border-slate-700 text-white text-sm font-mono font-bold px-2 py-1 rounded-lg outline-none focus:border-indigo-500/50 mt-0.5" />
+                        ) : (
+                          <span className="text-sm font-mono font-bold text-slate-200">{selectedLead.bankDetails?.ifscCode || "N/A"}</span>
+                        )}
                       </div>
                       <div className="col-span-2">
                         <span className="text-[10px] text-slate-500 uppercase font-semibold block">Account Holder Name</span>
-                        <span className="text-sm font-bold text-slate-200">{selectedLead.bankDetails?.accountHolder || "N/A"}</span>
+                        {isEditingAll ? (
+                          <input type="text" value={editFormData.accountHolder} onChange={e => setEditFormData({...editFormData, accountHolder: e.target.value})} className="w-full bg-slate-900 border border-slate-700 text-white text-sm font-bold px-2 py-1 rounded-lg outline-none focus:border-indigo-500/50 mt-0.5" />
+                        ) : (
+                          <span className="text-sm font-bold text-slate-200">{selectedLead.bankDetails?.accountHolder || "N/A"}</span>
+                        )}
                       </div>
                       <div className="col-span-2">
                         <span className="text-[10px] text-slate-500 uppercase font-semibold block">Disbursal Account Number</span>
@@ -596,57 +725,113 @@ export default function Leads() {
                   </h3>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div>
+                      <span className="text-[10px] text-slate-500 uppercase font-semibold block">Full Name</span>
+                      {isEditingAll ? (
+                        <input type="text" value={editFormData.fullName} onChange={e => setEditFormData({...editFormData, fullName: e.target.value})} className="w-full bg-slate-900 border border-slate-700 text-white text-xs font-bold px-2 py-1 rounded-lg outline-none focus:border-cyan-500/50 mt-0.5" />
+                      ) : (
+                        <span className="text-xs font-bold text-white">{selectedLead.fullName || "N/A"}</span>
+                      )}
+                    </div>
+                    <div>
                       <span className="text-[10px] text-slate-500 uppercase font-semibold block">Mobile Number</span>
-                      <span className="text-xs font-bold text-white">{selectedLead.mobileNumber}</span>
+                      {isEditingAll ? (
+                        <input type="text" value={editFormData.mobileNumber} onChange={e => setEditFormData({...editFormData, mobileNumber: e.target.value})} className="w-full bg-slate-900 border border-slate-700 text-white text-xs font-bold px-2 py-1 rounded-lg outline-none focus:border-cyan-500/50 mt-0.5" />
+                      ) : (
+                        <span className="text-xs font-bold text-white">{selectedLead.mobileNumber}</span>
+                      )}
                     </div>
                     <div>
                       <span className="text-[10px] text-slate-500 uppercase font-semibold block">Email ID</span>
-                      <span className="text-xs font-bold text-white truncate block">{selectedLead.email || "N/A"}</span>
+                      {isEditingAll ? (
+                        <input type="text" value={editFormData.email} onChange={e => setEditFormData({...editFormData, email: e.target.value})} className="w-full bg-slate-900 border border-slate-700 text-white text-xs font-bold px-2 py-1 rounded-lg outline-none focus:border-cyan-500/50 mt-0.5" />
+                      ) : (
+                        <span className="text-xs font-bold text-white truncate block">{selectedLead.email || "N/A"}</span>
+                      )}
                     </div>
                     <div>
                       <span className="text-[10px] text-slate-500 uppercase font-semibold block">Date of Birth</span>
-                      <span className="text-xs font-bold text-white">{selectedLead.dob || "N/A"}</span>
+                      {isEditingAll ? (
+                        <input type="text" value={editFormData.dob} onChange={e => setEditFormData({...editFormData, dob: e.target.value})} className="w-full bg-slate-900 border border-slate-700 text-white text-xs font-bold px-2 py-1 rounded-lg outline-none focus:border-cyan-500/50 mt-0.5" />
+                      ) : (
+                        <span className="text-xs font-bold text-white">{selectedLead.dob || "N/A"}</span>
+                      )}
                     </div>
                     <div>
                       <span className="text-[10px] text-slate-500 uppercase font-semibold block">PAN Number</span>
-                      <span className="text-xs font-mono font-bold text-white">{selectedLead.panNumber || "N/A"}</span>
+                      {isEditingAll ? (
+                        <input type="text" value={editFormData.panNumber} onChange={e => setEditFormData({...editFormData, panNumber: e.target.value})} className="w-full bg-slate-900 border border-slate-700 text-white text-xs font-mono font-bold px-2 py-1 rounded-lg outline-none focus:border-cyan-500/50 mt-0.5" />
+                      ) : (
+                        <span className="text-xs font-mono font-bold text-white">{selectedLead.panNumber || "N/A"}</span>
+                      )}
                     </div>
                     <div>
                       <span className="text-[10px] text-slate-500 uppercase font-semibold block">Aadhaar Card</span>
-                      <span className="text-xs font-mono font-bold text-white">{selectedLead.aadhaarNumber || "N/A"}</span>
+                      {isEditingAll ? (
+                        <input type="text" value={editFormData.aadhaarNumber} onChange={e => setEditFormData({...editFormData, aadhaarNumber: e.target.value})} className="w-full bg-slate-900 border border-slate-700 text-white text-xs font-mono font-bold px-2 py-1 rounded-lg outline-none focus:border-cyan-500/50 mt-0.5" />
+                      ) : (
+                        <span className="text-xs font-mono font-bold text-white">{selectedLead.aadhaarNumber || "N/A"}</span>
+                      )}
                     </div>
                     <div>
-                      <span className="text-[10px] text-slate-500 uppercase font-semibold block">Employment Profile</span>
-                      <span className="text-xs font-bold text-white">{selectedLead.employmentType || "N/A"}</span>
+                      <span className="text-[10px] text-slate-500 uppercase font-semibold block">Employment</span>
+                      {isEditingAll ? (
+                        <select value={editFormData.employmentType} onChange={e => setEditFormData({...editFormData, employmentType: e.target.value})} className="w-full bg-slate-900 border border-slate-700 text-white text-xs font-bold px-2 py-1 rounded-lg outline-none focus:border-cyan-500/50 mt-0.5">
+                          <option value="Salaried">Salaried</option>
+                          <option value="Self-Employed">Self-Employed</option>
+                          <option value="Business">Business</option>
+                        </select>
+                      ) : (
+                        <span className="text-xs font-bold text-white">{selectedLead.employmentType || "N/A"}</span>
+                      )}
                     </div>
                     <div>
-                      <span className="text-[10px] text-slate-500 uppercase font-semibold block">Establishment Name</span>
-                      <span className="text-xs font-bold text-white truncate block">{selectedLead.companyName || "N/A"}</span>
+                      <span className="text-[10px] text-slate-500 uppercase font-semibold block">Company Name</span>
+                      {isEditingAll ? (
+                        <input type="text" value={editFormData.companyName} onChange={e => setEditFormData({...editFormData, companyName: e.target.value})} className="w-full bg-slate-900 border border-slate-700 text-white text-xs font-bold px-2 py-1 rounded-lg outline-none focus:border-cyan-500/50 mt-0.5" />
+                      ) : (
+                        <span className="text-xs font-bold text-white truncate block">{selectedLead.companyName || "N/A"}</span>
+                      )}
                     </div>
                     <div>
                       <span className="text-[10px] text-slate-500 uppercase font-semibold block">Monthly Earnings</span>
-                      <span className="text-xs font-bold text-emerald-400">{selectedLead.monthlyIncome ? formatCurrency(selectedLead.monthlyIncome) : "N/A"}</span>
+                      {isEditingAll ? (
+                        <input type="number" value={editFormData.monthlyIncome} onChange={e => setEditFormData({...editFormData, monthlyIncome: e.target.value})} className="w-full bg-slate-900 border border-slate-700 text-white text-xs font-bold px-2 py-1 rounded-lg outline-none focus:border-cyan-500/50 mt-0.5" />
+                      ) : (
+                        <span className="text-xs font-bold text-emerald-400">{selectedLead.monthlyIncome ? formatCurrency(selectedLead.monthlyIncome) : "N/A"}</span>
+                      )}
                     </div>
                     <div>
-                      <span className="text-[10px] text-slate-500 uppercase font-semibold block">Nominee Assigned</span>
-                      <span className="text-xs font-bold text-slate-350">{selectedLead.nomineeName || "N/A"} {selectedLead.nomineeRelation ? `(${selectedLead.nomineeRelation})` : ""}</span>
+                      <span className="text-[10px] text-slate-500 uppercase font-semibold block">Nominee Name</span>
+                      {isEditingAll ? (
+                        <input type="text" value={editFormData.nomineeName} onChange={e => setEditFormData({...editFormData, nomineeName: e.target.value})} className="w-full bg-slate-900 border border-slate-700 text-white text-xs font-bold px-2 py-1 rounded-lg outline-none focus:border-cyan-500/50 mt-0.5" />
+                      ) : (
+                        <span className="text-xs font-bold text-slate-350">{selectedLead.nomineeName || "N/A"}</span>
+                      )}
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-500 uppercase font-semibold block">Nominee Relation</span>
+                      {isEditingAll ? (
+                        <input type="text" value={editFormData.nomineeRelation} onChange={e => setEditFormData({...editFormData, nomineeRelation: e.target.value})} className="w-full bg-slate-900 border border-slate-700 text-white text-xs font-bold px-2 py-1 rounded-lg outline-none focus:border-cyan-500/50 mt-0.5" />
+                      ) : (
+                        <span className="text-xs font-bold text-slate-350">{selectedLead.nomineeRelation ? `(${selectedLead.nomineeRelation})` : "N/A"}</span>
+                      )}
                     </div>
                     <div>
                       <span className="text-[10px] text-slate-500 uppercase font-semibold block">User Password</span>
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        <span className="text-xs font-mono font-bold text-white">
-                          {showPassword ? selectedLead.password || "N/A" : "••••••"}
-                        </span>
-                        {selectedLead.password && (
-                          <button
-                            type="button"
-                            onClick={() => setShowPassword(!showPassword)}
-                            className="text-slate-500 hover:text-slate-300 transition-colors cursor-pointer"
-                          >
-                            {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
-                          </button>
-                        )}
-                      </div>
+                      {isEditingAll ? (
+                        <input type="text" value={editFormData.password} onChange={e => setEditFormData({...editFormData, password: e.target.value})} className="w-full bg-slate-900 border border-slate-700 text-white text-xs font-mono font-bold px-2 py-1 rounded-lg outline-none focus:border-cyan-500/50 mt-0.5" />
+                      ) : (
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <span className="text-xs font-mono font-bold text-white">
+                            {showPassword ? selectedLead.password || "N/A" : "••••••"}
+                          </span>
+                          {selectedLead.password && (
+                            <button type="button" onClick={() => setShowPassword(!showPassword)} className="text-slate-500 hover:text-slate-300 transition-colors cursor-pointer">
+                              {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
