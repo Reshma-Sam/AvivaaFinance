@@ -18,12 +18,20 @@ const PORT = process.env.PORT || 5000;
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-// Enable CORS
-app.use(cors({
-  origin: '*', // Allow all origins for development
+// Enable CORS with support for credentials and dynamic origins
+const corsOptions = {
+  origin: (origin, callback) => {
+    // Allow all origins by echoing the requesting origin back
+    callback(null, true);
+  },
+  credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
-}));
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions)); // Handle preflight requests
+
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -90,11 +98,10 @@ const migrateLoansWithId = async () => {
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://avivafinance398_db_user:1nOMziMVK6k9zAT0@cluster0.s4ra7du.mongodb.net/avivaa?appName=Cluster0';
 const LOCAL_MONGODB_URI = 'mongodb://127.0.0.1:27017/avivaa';
 
-const startServer = () => {
-  app.listen(PORT, () => {
-    console.log(`Backend Server is running on port ${PORT}`);
-  });
-};
+// Start the server immediately so that deployment services (like Render) detect it is alive
+app.listen(PORT, () => {
+  console.log(`Backend Server is running on port ${PORT}`);
+});
 
 const connectDB = async () => {
   console.log('Connecting to MongoDB Atlas...');
@@ -103,7 +110,6 @@ const connectDB = async () => {
     console.log('Successfully connected to MongoDB Atlas Cluster');
     await seedAdminUser();
     await migrateLoansWithId();
-    startServer();
   } catch (err) {
     console.error('MongoDB Atlas connection failed:', err.message);
     console.log('Attempting fallback to local MongoDB instance...');
@@ -112,7 +118,6 @@ const connectDB = async () => {
       console.log('Successfully connected to local MongoDB instance');
       await seedAdminUser();
       await migrateLoansWithId();
-      startServer();
     } catch (localErr) {
       console.error('\n========================================================================');
       console.error('DATABASE CONNECTION ERROR:');
@@ -125,7 +130,7 @@ const connectDB = async () => {
       console.error('5. Click "Confirm" and wait 1-2 minutes for the whitelist to deploy.');
       console.error('6. Restart this server by running: npm start');
       console.error('========================================================================\n');
-      process.exit(1);
+      console.log('Server remains active to respond to requests, but database operations will fail.');
     }
   }
 };
