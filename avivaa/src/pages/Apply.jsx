@@ -379,11 +379,18 @@ export default function Apply() {
       if (response.ok) {
         const data = await response.json();
         console.log("Draft saved successfully:", data);
-        // Refresh activeDbLoan state
+        // Refresh activeDbLoan state and sync URLs
         const statusRes = await fetch(`${API_BASE_URL}/loans/status/${mobile}`);
         if (statusRes.ok) {
           const fullLoan = await statusRes.json();
           setActiveDbLoan(fullLoan);
+          if (fullLoan.kycFiles) {
+            if (fullLoan.kycFiles.panCard?.data) setPanFile(fullLoan.kycFiles.panCard);
+            if (fullLoan.kycFiles.aadhaarFront?.data) setAadhaarFrontFile(fullLoan.kycFiles.aadhaarFront);
+            if (fullLoan.kycFiles.aadhaarBack?.data) setAadhaarBackFile(fullLoan.kycFiles.aadhaarBack);
+            if (fullLoan.kycFiles.nomineeDoc?.data) setNomineeDocFile(fullLoan.kycFiles.nomineeDoc);
+            if (fullLoan.kycFiles.selfieImage) setSelfieImage(fullLoan.kycFiles.selfieImage);
+          }
         }
       }
     } catch (err) {
@@ -394,6 +401,7 @@ export default function Apply() {
   // Save application draft to backend with a newly uploaded file override
   const saveDraftWithFile = async (fieldName, fileObj) => {
     try {
+      const isSelfie = fieldName === 'selfieImage';
       const payload = {
         mobileNumber: mobile,
         fullName: fullName,
@@ -417,7 +425,7 @@ export default function Apply() {
           aadhaarFront: fieldName === 'aadhaarFront' ? fileObj : aadhaarFrontFile,
           aadhaarBack: fieldName === 'aadhaarBack' ? fileObj : aadhaarBackFile,
           nomineeDoc: fieldName === 'nomineeDoc' ? fileObj : nomineeDocFile,
-          selfieImage: selfieImage
+          selfieImage: isSelfie ? fileObj : selfieImage
         },
         bankDetails: {
           accountHolder,
@@ -436,15 +444,47 @@ export default function Apply() {
       });
       if (response.ok) {
         console.log(`KYC file ${fieldName} saved successfully`);
-        // Refresh activeDbLoan state
+        // Refresh activeDbLoan state and sync URLs
         const statusRes = await fetch(`${API_BASE_URL}/loans/status/${mobile}`);
         if (statusRes.ok) {
           const fullLoan = await statusRes.json();
           setActiveDbLoan(fullLoan);
+          if (fullLoan.kycFiles) {
+            if (fullLoan.kycFiles.panCard?.data) setPanFile(fullLoan.kycFiles.panCard);
+            if (fullLoan.kycFiles.aadhaarFront?.data) setAadhaarFrontFile(fullLoan.kycFiles.aadhaarFront);
+            if (fullLoan.kycFiles.aadhaarBack?.data) setAadhaarBackFile(fullLoan.kycFiles.aadhaarBack);
+            if (fullLoan.kycFiles.nomineeDoc?.data) setNomineeDocFile(fullLoan.kycFiles.nomineeDoc);
+            if (fullLoan.kycFiles.selfieImage) setSelfieImage(fullLoan.kycFiles.selfieImage);
+          }
         }
       }
     } catch (err) {
       console.warn("Failed to save draft with file:", err);
+    }
+  };
+
+  // Save bank details draft to backend
+  const saveBankDraft = async (bankOverride = {}) => {
+    try {
+      const payload = {
+        mobileNumber: mobile,
+        fullName: fullName,
+        currentStep: 7,
+        bankDetails: {
+          accountHolder: bankOverride.accountHolder !== undefined ? bankOverride.accountHolder : accountHolder,
+          bankName: bankOverride.bankName !== undefined ? bankOverride.bankName : (verifiedBankName || bankName),
+          accountNumber: bankOverride.accountNumber !== undefined ? bankOverride.accountNumber : accountNumber,
+          ifscCode: bankOverride.ifscCode !== undefined ? bankOverride.ifscCode : ifscCode
+        }
+      };
+      await fetch(`${API_BASE_URL}/loans/apply`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      console.log("Bank details draft saved successfully");
+    } catch (err) {
+      console.warn("Failed to save bank draft:", err);
     }
   };
 
@@ -819,6 +859,7 @@ export default function Apply() {
       const dataUrl = canvas.toDataURL("image/jpeg");
       setSelfieImage(dataUrl);
       stopCamera();
+      saveDraftWithFile('selfieImage', dataUrl);
     }
   };
 
@@ -828,6 +869,7 @@ export default function Apply() {
       const reader = new FileReader();
       reader.onload = (event) => {
         setSelfieImage(event.target.result);
+        saveDraftWithFile('selfieImage', event.target.result);
       };
       reader.readAsDataURL(file);
     }
@@ -1962,6 +2004,9 @@ export default function Apply() {
                     placeholder="Enter name exactly as on bank records"
                     value={accountHolder}
                     onChange={(e) => setAccountHolder(e.target.value)}
+                    onBlur={() => {
+                      if (accountHolder.trim()) saveBankDraft({ accountHolder: accountHolder.trim() });
+                    }}
                     className={`input-field ${bankErrors.accountHolder ? "border-red-400 bg-red-50/10" : ""}`}
                   />
                   {bankErrors.accountHolder && <p className="text-xs text-red-500 font-semibold">{bankErrors.accountHolder}</p>}
@@ -2015,9 +2060,12 @@ export default function Apply() {
                               setShowBankDropdown(false);
                               if (bank.id !== "other") {
                                 setBankName(bank.name);
+                                setVerifiedBankName(bank.name);
                                 setIfscCode(bank.code); // Pre-fill IFSC prefix!
+                                saveBankDraft({ bankName: bank.name, ifscCode: bank.code });
                               } else {
                                 setBankName("");
+                                setVerifiedBankName("");
                               }
                             }}
                             className={`flex items-center gap-3 p-2.5 rounded-xl cursor-pointer transition-all hover:bg-slate-50 ${selectedBankId === bank.id ? "bg-brand-green/5 border-l-4 border-brand-green" : ""}`}
@@ -2048,6 +2096,13 @@ export default function Apply() {
                       placeholder="Enter your bank's name"
                       value={otherBankName}
                       onChange={(e) => setOtherBankName(e.target.value)}
+                      onBlur={() => {
+                        if (otherBankName.trim()) {
+                          setBankName(otherBankName.trim());
+                          setVerifiedBankName(otherBankName.trim());
+                          saveBankDraft({ bankName: otherBankName.trim() });
+                        }
+                      }}
                       className="input-field"
                     />
                   </motion.div>
@@ -2066,6 +2121,9 @@ export default function Apply() {
                         setAccountNumber(val);
                       }
                     }}
+                    onBlur={() => {
+                      if (accountNumber.trim()) saveBankDraft({ accountNumber: accountNumber.trim() });
+                    }}
                     className={`input-field ${bankErrors.accountNumber ? "border-red-400 bg-red-50/10" : ""}`}
                   />
                   {bankErrors.accountNumber && <p className="text-xs text-red-500 font-semibold">{bankErrors.accountNumber}</p>}
@@ -2080,6 +2138,9 @@ export default function Apply() {
                     maxLength={11}
                     value={ifscCode}
                     onChange={(e) => setIfscCode(e.target.value.toUpperCase().slice(0, 11))}
+                    onBlur={() => {
+                      if (ifscCode.trim()) saveBankDraft({ ifscCode: ifscCode.trim() });
+                    }}
                     className={`input-field ${bankErrors.ifscCode ? "border-red-400 bg-red-50/10" : ""}`}
                   />
                   {bankErrors.ifscCode && <p className="text-xs text-red-500 font-semibold">{bankErrors.ifscCode}</p>}

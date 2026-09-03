@@ -271,11 +271,11 @@ export default function Leads() {
   const getStepName = (stepNum) => {
     switch (stepNum) {
       case 2: return "Step 2: Personal Details Form";
-      case 3: return "Step 3: Upload PAN Card";
-      case 4: return "Step 4: Upload Aadhaar Front";
-      case 5: return "Step 5: Upload Aadhaar Back";
-      case 6: return "Step 6: Upload Selfie Photo";
-      case 7: return "Step 7: Bank Details & Verification";
+      case 3: return "Step 3: Loan Eligibility Check";
+      case 4: return "Step 4: Loan Config & Duration";
+      case 5: return "Step 5: KYC Documents Upload";
+      case 6: return "Step 6: Biometric Selfie Photo";
+      case 7: return "Step 7: Disbursal Bank Account";
       default: return `Step ${stepNum || "Unknown"}`;
     }
   };
@@ -925,6 +925,76 @@ export default function Leads() {
                     ) : (
                       <div className="bg-slate-950/40 p-4 border border-dashed border-slate-900 rounded-2xl flex flex-col items-center justify-center text-slate-600 text-xs py-10">
                         No Aadhaar Front Uploaded Yet
+                      </div>
+                    )}
+
+                    {/* Aadhaar Back */}
+                    {selectedLead.kycFiles?.aadhaarBack?.data ? (
+                      <div className="bg-slate-950 p-4 border border-slate-850 rounded-2xl flex flex-col items-center justify-between">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 mb-3 block truncate max-w-full">
+                          Aadhaar Back: {selectedLead.kycFiles.aadhaarBack.name || "back.jpg"}
+                        </span>
+                        
+                        {isKycFilePdf(selectedLead.kycFiles.aadhaarBack) ? (
+                          <div className="h-32 w-full flex items-center justify-center bg-slate-900 rounded-xl">
+                            <span className="text-xs font-bold text-slate-400">PDF Document</span>
+                          </div>
+                        ) : (
+                          <img 
+                            src={selectedLead.kycFiles.aadhaarBack.data} 
+                            alt="Aadhaar Back" 
+                            className="max-h-32 object-contain rounded-lg border border-slate-900"
+                          />
+                        )}
+
+                        <a 
+                          href={selectedLead.kycFiles.aadhaarBack.data}
+                          download={selectedLead.kycFiles.aadhaarBack.name || "aadhaar_back"}
+                          target={selectedLead.kycFiles.aadhaarBack.data.startsWith("http") ? "_blank" : undefined}
+                          rel={selectedLead.kycFiles.aadhaarBack.data.startsWith("http") ? "noopener noreferrer" : undefined}
+                          className="mt-3 py-1.5 px-3 bg-slate-900 hover:bg-slate-850 rounded-lg text-[10px] font-bold text-slate-300 flex items-center gap-1 cursor-pointer transition-colors"
+                        >
+                          <Download size={12} /> Download
+                        </a>
+                      </div>
+                    ) : (
+                      <div className="bg-slate-950/40 p-4 border border-dashed border-slate-900 rounded-2xl flex flex-col items-center justify-center text-slate-600 text-xs py-10">
+                        No Aadhaar Back Uploaded Yet
+                      </div>
+                    )}
+
+                    {/* Nominee Document */}
+                    {selectedLead.kycFiles?.nomineeDoc?.data ? (
+                      <div className="bg-slate-950 p-4 border border-slate-850 rounded-2xl flex flex-col items-center justify-between">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 mb-3 block truncate max-w-full">
+                          Nominee ID: {selectedLead.kycFiles.nomineeDoc.name || "nominee_doc.jpg"}
+                        </span>
+                        
+                        {isKycFilePdf(selectedLead.kycFiles.nomineeDoc) ? (
+                          <div className="h-32 w-full flex items-center justify-center bg-slate-900 rounded-xl">
+                            <span className="text-xs font-bold text-slate-400">PDF Document</span>
+                          </div>
+                        ) : (
+                          <img 
+                            src={selectedLead.kycFiles.nomineeDoc.data} 
+                            alt="Nominee Document" 
+                            className="max-h-32 object-contain rounded-lg border border-slate-900"
+                          />
+                        )}
+
+                        <a 
+                          href={selectedLead.kycFiles.nomineeDoc.data}
+                          download={selectedLead.kycFiles.nomineeDoc.name || "nominee_doc"}
+                          target={selectedLead.kycFiles.nomineeDoc.data.startsWith("http") ? "_blank" : undefined}
+                          rel={selectedLead.kycFiles.nomineeDoc.data.startsWith("http") ? "noopener noreferrer" : undefined}
+                          className="mt-3 py-1.5 px-3 bg-slate-900 hover:bg-slate-850 rounded-lg text-[10px] font-bold text-slate-300 flex items-center gap-1 cursor-pointer transition-colors"
+                        >
+                          <Download size={12} /> Download
+                        </a>
+                      </div>
+                    ) : (
+                      <div className="bg-slate-950/40 p-4 border border-dashed border-slate-900 rounded-2xl flex flex-col items-center justify-center text-slate-600 text-xs py-10">
+                        No Nominee Doc Uploaded Yet
                       </div>
                     )}
                   </div>

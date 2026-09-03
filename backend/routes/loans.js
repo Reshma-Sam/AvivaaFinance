@@ -35,8 +35,38 @@ router.post('/apply', async (req, res) => {
     const existingLoan = await Loan.findOne({ mobileNumber: loanData.mobileNumber });
     
     if (existingLoan) {
-      // Merge new data
-      Object.assign(existingLoan, loanData);
+      // Intelligently merge fields to avoid overwriting existing files and details with empty drafts
+      for (const key of Object.keys(loanData)) {
+        if (key === 'kycFiles' && loanData.kycFiles) {
+          existingLoan.kycFiles = existingLoan.kycFiles || {};
+          for (const docKey of ['panCard', 'aadhaarFront', 'aadhaarBack', 'nomineeDoc']) {
+            if (loanData.kycFiles[docKey] && loanData.kycFiles[docKey].data) {
+              existingLoan.kycFiles[docKey] = loanData.kycFiles[docKey];
+            }
+          }
+          if (loanData.kycFiles.selfieImage) {
+            existingLoan.kycFiles.selfieImage = loanData.kycFiles.selfieImage;
+          }
+          existingLoan.markModified('kycFiles');
+        } else if (key === 'bankDetails' && loanData.bankDetails) {
+          existingLoan.bankDetails = existingLoan.bankDetails || {};
+          for (const bankKey of ['accountHolder', 'bankName', 'accountNumber', 'ifscCode']) {
+            const val = loanData.bankDetails[bankKey];
+            if (val !== undefined && val !== null && String(val).trim() !== '') {
+              existingLoan.bankDetails[bankKey] = val;
+            }
+          }
+          existingLoan.markModified('bankDetails');
+        } else if (loanData[key] !== undefined && loanData[key] !== null) {
+          if (typeof loanData[key] === 'string') {
+            if (loanData[key].trim() !== '') {
+              existingLoan[key] = loanData[key];
+            }
+          } else {
+            existingLoan[key] = loanData[key];
+          }
+        }
+      }
       savedLoan = await existingLoan.save();
     } else {
       const newLoan = new Loan(loanData);
@@ -46,7 +76,8 @@ router.post('/apply', async (req, res) => {
     res.status(201).json({
       success: true,
       message: 'Loan application submitted successfully!',
-      loanId: savedLoan._id
+      loanId: savedLoan._id,
+      loan: savedLoan
     });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
