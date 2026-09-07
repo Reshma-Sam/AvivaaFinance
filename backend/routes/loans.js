@@ -154,7 +154,8 @@ router.put('/:id', auth, async (req, res) => {
     const directFields = [
       'fullName', 'mobileNumber', 'email', 'dob', 'panNumber', 'aadhaarNumber',
       'employmentType', 'companyName', 'monthlyIncome', 'nomineeName', 'nomineeRelation',
-      'password', 'loanAmount', 'loanDuration', 'emi', 'interestRate', 'status', 'walletAmount'
+      'password', 'loanAmount', 'loanDuration', 'emi', 'interestRate', 'status', 'walletAmount',
+      'currentStep'
     ];
     
     directFields.forEach(field => {
@@ -198,6 +199,30 @@ router.put('/:id', auth, async (req, res) => {
     }
     
     res.json(updatedLoan);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Promote/convert lead to full application (Protected)
+router.put('/:id/promote-lead', auth, async (req, res) => {
+  try {
+    const loan = await Loan.findById(req.params.id);
+    if (!loan) {
+      return res.status(404).json({ message: 'Lead not found' });
+    }
+
+    loan.currentStep = 8;
+    if (!loan.status || loan.status === 'Hold') {
+      loan.status = 'Pending';
+    }
+    await loan.save();
+
+    res.json({
+      success: true,
+      message: 'Lead converted to full application successfully',
+      loan
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

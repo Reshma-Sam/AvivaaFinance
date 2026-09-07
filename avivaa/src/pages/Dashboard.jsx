@@ -5,7 +5,7 @@ import {
   Building2, Landmark, CheckCircle, AlertCircle, Clock, 
   Search, LogOut, FileText, ChevronRight, User, Phone, 
   Download, Calendar, ShieldCheck, DollarSign, Loader2, X, Upload, Copy, Check, Trash2,
-  Eye, EyeOff, Wallet
+  Eye, EyeOff, Wallet, ArrowUpRight
 } from "lucide-react";
 import logo from "../assets/logo.jpeg";
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
@@ -23,6 +23,7 @@ export default function Dashboard() {
   const [adminUser, setAdminUser] = useState(null);
   const [copiedId, setCopiedId] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
+  const [promotingLoanId, setPromotingLoanId] = useState(null);
   const [dialog, setDialog] = useState({
     isOpen: false,
     title: "",
@@ -397,6 +398,52 @@ export default function Dashboard() {
     }
   };
 
+  // Promote an incomplete lead directly to complete application (Step 8: Pending)
+  const handlePromoteLoan = (loan) => {
+    showConfirm(
+      "Make Complete Application",
+      `Are you sure you want to promote ${loan.fullName}'s lead (Loan ID: ${loan.loanId || loan._id}) to a full completed application? It will be marked as complete (Step 8: Pending) and will become available for full underwriting, agreement generation, and disbursal.`,
+      async () => {
+        setPromotingLoanId(loan._id);
+        try {
+          const token = localStorage.getItem("avivaa_dashboard_token");
+          const response = await fetch(`${API_BASE_URL}/loans/${loan._id}/promote-lead`, {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${token}`
+            }
+          });
+
+          if (!response.ok) {
+            const data = await response.json().catch(() => ({}));
+            throw new Error(data.message || "Failed to promote lead");
+          }
+
+          const result = await response.json();
+          const updatedLoan = result.loan || {
+            ...loan,
+            currentStep: 8,
+            status: loan.status && loan.status !== "Hold" ? loan.status : "Pending"
+          };
+
+          setLoans(prev => prev.map(l => (l._id === loan._id ? updatedLoan : l)));
+          if (selectedLoan && selectedLoan._id === loan._id) {
+            setSelectedLoan(updatedLoan);
+          }
+          showAlert(
+            `${loan.fullName}'s application is now converted to a Full Completed Application (Step 8)! You can now approve, reject, or disburse funds.`,
+            "success"
+          );
+        } catch (err) {
+          showAlert(err.message || "Could not convert lead", "error");
+        } finally {
+          setPromotingLoanId(null);
+        }
+      }
+    );
+  };
+
   // Only show completed applications (currentStep is 8 or undefined/not specified)
   const completedLoans = loans.filter(l => l.currentStep === undefined || l.currentStep >= 8);
   const incompleteLoans = loans.filter(l => l.currentStep !== undefined && l.currentStep < 8);
@@ -411,15 +458,23 @@ export default function Dashboard() {
     .filter(l => l.status === "Approved")
     .reduce((sum, curr) => sum + curr.loanAmount, 0);
 
-  // Filtered list
-  const filteredLoans = completedLoans.filter(loan => {
+  // Base list for filtering:
+  // - If "Incomplete" filter is chosen, show incomplete leads
+  // - If searching, search across all records (both completed and incomplete)
+  // - Otherwise, show completed loans
+  const baseLoans = statusFilter === "Incomplete"
+    ? incompleteLoans
+    : (searchTerm.trim() ? loans : completedLoans);
+
+  const filteredLoans = baseLoans.filter(loan => {
     const matchesSearch = 
-      loan.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      loan.mobileNumber.includes(searchTerm) ||
+      loan.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      loan.mobileNumber?.includes(searchTerm) ||
       (loan.loanId && loan.loanId.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      loan.panNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      loan.aadhaarNumber.includes(searchTerm);
+      (loan.panNumber && loan.panNumber.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (loan.aadhaarNumber && loan.aadhaarNumber.includes(searchTerm));
     
+    if (statusFilter === "Incomplete" || searchTerm.trim()) return matchesSearch;
     const matchesFilter = statusFilter === "All" || loan.status === statusFilter;
 
     return matchesSearch && matchesFilter;
@@ -542,6 +597,25 @@ export default function Dashboard() {
               <span className="text-xs text-slate-500">paused</span>
             </div>
           </div>
+          <div 
+            onClick={() => setStatusFilter(statusFilter === "Incomplete" ? "All" : "Incomplete")}
+            className={`border p-5 rounded-2xl flex flex-col justify-between cursor-pointer transition-all ${
+              statusFilter === "Incomplete"
+                ? "bg-amber-500/15 border-amber-500 shadow-lg shadow-amber-500/10"
+                : "bg-slate-900/50 border-slate-900 hover:border-amber-500/40"
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] uppercase font-black tracking-wider text-amber-400">Incomplete Leads</span>
+              {incompleteLoans.length > 0 && (
+                <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+              )}
+            </div>
+            <div className="mt-2 flex items-baseline gap-2">
+              <span className="text-3xl font-black text-amber-400">{incompleteLoans.length}</span>
+              <span className="text-xs text-slate-500">drafts</span>
+            </div>
+          </div>
           <div className="bg-emerald-950/20 border border-emerald-900/20 p-5 rounded-2xl flex flex-col justify-between col-span-1 sm:col-span-2 lg:col-span-1 xl:col-span-1">
             <span className="text-[10px] uppercase font-black tracking-wider text-emerald-555/80">Approved Capital Volume</span>
             <div className="mt-2 flex items-baseline gap-2">
@@ -556,7 +630,7 @@ export default function Dashboard() {
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
             <input 
               type="text"
-              placeholder="Search by name, phone, PAN or Aadhaar..."
+              placeholder="Search by name, phone, PAN, Aadhaar or Loan ID..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500/50 text-white text-xs pl-11 pr-4 py-3 rounded-xl outline-none transition-all"
@@ -564,17 +638,26 @@ export default function Dashboard() {
           </div>
 
           <div className="flex gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
-            {["All", "Pending", "Approved", "Rejected", "Hold"].map(filterVal => (
+            {["All", "Pending", "Approved", "Rejected", "Hold", "Incomplete"].map(filterVal => (
               <button
                 key={filterVal}
                 onClick={() => setStatusFilter(filterVal)}
-                className={`py-2 px-4 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                className={`py-2 px-4 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
                   statusFilter === filterVal 
-                    ? "bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/10" 
+                    ? filterVal === "Incomplete"
+                      ? "bg-amber-500 text-slate-950 shadow-md shadow-amber-500/10 font-black"
+                      : "bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/10" 
                     : "bg-slate-900 hover:bg-slate-850 text-slate-400 border border-slate-800"
                 }`}
               >
-                {filterVal}
+                {filterVal === "Incomplete" ? "Incomplete Leads" : filterVal}
+                {filterVal === "Incomplete" && incompleteLoans.length > 0 && (
+                  <span className={`px-1.5 py-0.2 rounded-full text-[9px] font-black ${
+                    statusFilter === "Incomplete" ? "bg-slate-950 text-amber-400" : "bg-amber-500/20 text-amber-400"
+                  }`}>
+                    {incompleteLoans.length}
+                  </span>
+                )}
               </button>
             ))}
           </div>
@@ -643,13 +726,24 @@ export default function Dashboard() {
                         <div className="text-[11px] text-emerald-500 font-semibold mt-0.5">{loan.interestRate}% Flat Flat</div>
                       </td>
                       <td className="py-4 px-6">
-                        <div className="text-xs font-bold text-slate-400 truncate max-w-[120px]">{loan.bankDetails.bankName}</div>
-                        <div className="text-[10px] font-mono text-slate-500 mt-0.5">{loan.bankDetails.ifscCode}</div>
+                        <div className="text-xs font-bold text-slate-400 truncate max-w-[120px]">
+                          {loan.bankDetails?.bankName || "Pending Setup"}
+                        </div>
+                        <div className="text-[10px] font-mono text-slate-500 mt-0.5">
+                          {loan.bankDetails?.ifscCode || "No IFSC"}
+                        </div>
                       </td>
                       <td className="py-4 px-6">
-                        <span className={`px-2.5 py-1 text-[10px] font-black uppercase tracking-wider rounded-full border ${getStatusColor(loan.status)}`}>
-                          {loan.status}
-                        </span>
+                        <div className="flex flex-col gap-1 items-start">
+                          <span className={`px-2.5 py-1 text-[10px] font-black uppercase tracking-wider rounded-full border ${getStatusColor(loan.status)}`}>
+                            {loan.status}
+                          </span>
+                          {loan.currentStep !== undefined && loan.currentStep < 8 && (
+                            <span className="px-2 py-0.5 text-[9px] font-black uppercase tracking-wider rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                              Step {loan.currentStep}: Incomplete
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="py-4 px-6 text-xs text-slate-400">
                         {new Date(loan.createdAt).toLocaleDateString("en-IN", {
@@ -659,9 +753,29 @@ export default function Dashboard() {
                         })}
                       </td>
                       <td className="py-4 px-6 text-right">
-                        <button className="p-1.5 bg-slate-900 border border-slate-800 rounded-lg text-slate-400 group-hover:text-emerald-400 transition-all">
-                          <ChevronRight size={16} />
-                        </button>
+                        <div className="flex items-center justify-end gap-2">
+                          {loan.currentStep !== undefined && loan.currentStep < 8 && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handlePromoteLoan(loan);
+                              }}
+                              disabled={promotingLoanId === loan._id}
+                              className="px-2.5 py-1.5 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-slate-950 font-bold rounded-xl text-[10px] flex items-center gap-1 transition-all shadow-md shadow-emerald-500/10 cursor-pointer"
+                              title="Make this incomplete lead a full completed application"
+                            >
+                              {promotingLoanId === loan._id ? (
+                                <Loader2 size={11} className="animate-spin" />
+                              ) : (
+                                <CheckCircle size={11} />
+                              )}
+                              Make Complete
+                            </button>
+                          )}
+                          <button className="p-1.5 bg-slate-900 border border-slate-800 rounded-lg text-slate-400 group-hover:text-emerald-400 transition-all">
+                            <ChevronRight size={16} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -711,7 +825,7 @@ export default function Dashboard() {
 
                   <div className="flex items-center justify-between pt-1 text-xs">
                     <div className="text-slate-500">
-                      Target Bank: <span className="font-bold text-slate-400">{loan.bankDetails.bankName}</span>
+                      Target Bank: <span className="font-bold text-slate-400">{loan.bankDetails?.bankName || "Pending Setup"}</span>
                     </div>
                     <div className="text-slate-500">
                       {new Date(loan.createdAt).toLocaleDateString("en-IN", {
@@ -720,6 +834,24 @@ export default function Dashboard() {
                       })}
                     </div>
                   </div>
+
+                  {loan.currentStep !== undefined && loan.currentStep < 8 && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handlePromoteLoan(loan);
+                      }}
+                      disabled={promotingLoanId === loan._id}
+                      className="w-full py-2.5 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-slate-950 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition-colors shadow-md shadow-emerald-500/10 cursor-pointer"
+                    >
+                      {promotingLoanId === loan._id ? (
+                        <Loader2 size={13} className="animate-spin" />
+                      ) : (
+                        <CheckCircle size={13} />
+                      )}
+                      Make Complete Application
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
@@ -745,6 +877,11 @@ export default function Dashboard() {
                     <span className={`px-2 py-0.5 text-[9px] font-black uppercase tracking-wider rounded-full border ${getStatusColor(selectedLoan.status)}`}>
                       {selectedLoan.status}
                     </span>
+                    {selectedLoan.currentStep !== undefined && selectedLoan.currentStep < 8 && (
+                      <span className="px-2 py-0.5 text-[9px] font-black uppercase tracking-wider rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                        Step {selectedLoan.currentStep}: Incomplete Lead
+                      </span>
+                    )}
                   </div>
                   <div className="flex flex-wrap items-center gap-2 mt-1">
                     {selectedLoan.loanId && (
@@ -756,6 +893,21 @@ export default function Dashboard() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
+                  {selectedLoan.currentStep !== undefined && selectedLoan.currentStep < 8 && !isEditingAll && (
+                    <button
+                      onClick={() => handlePromoteLoan(selectedLoan)}
+                      disabled={promotingLoanId === selectedLoan._id}
+                      className="px-3.5 py-2.5 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-slate-950 font-bold rounded-xl text-xs flex items-center gap-1.5 cursor-pointer transition-all shadow-lg shadow-emerald-500/20"
+                      title="Convert this incomplete lead into a full completed application"
+                    >
+                      {promotingLoanId === selectedLoan._id ? (
+                        <Loader2 size={13} className="animate-spin" />
+                      ) : (
+                        <ArrowUpRight size={14} />
+                      )}
+                      Make Complete Application
+                    </button>
+                  )}
                   {isEditingAll ? (
                     <>
                       <button
@@ -791,6 +943,33 @@ export default function Dashboard() {
 
               {/* Modal Body */}
               <div className="p-6 overflow-y-auto space-y-8 flex-1" data-lenis-prevent>
+                {selectedLoan.currentStep !== undefined && selectedLoan.currentStep < 8 && (
+                  <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <AlertCircle size={20} className="text-amber-500 shrink-0" />
+                      <div>
+                        <p className="text-xs font-bold text-slate-200">
+                          Incomplete Lead (Applicant stopped at Step {selectedLoan.currentStep})
+                        </p>
+                        <p className="text-[11px] text-slate-400">
+                          Click below to convert this record into a complete application (Step 8: Pending) to enable full approval, loan agreement generation, and disbursal.
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handlePromoteLoan(selectedLoan)}
+                      disabled={promotingLoanId === selectedLoan._id}
+                      className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-slate-950 font-bold rounded-xl text-xs flex items-center gap-1.5 cursor-pointer shrink-0 transition-colors shadow-md shadow-emerald-500/10"
+                    >
+                      {promotingLoanId === selectedLoan._id ? (
+                        <Loader2 size={12} className="animate-spin" />
+                      ) : (
+                        <CheckCircle size={13} />
+                      )}
+                      Make Complete Now
+                    </button>
+                  </div>
+                )}
                 
                 {/* 1. Loan Parameters & Disbursal Bank */}
                 <div className="grid md:grid-cols-2 gap-6">

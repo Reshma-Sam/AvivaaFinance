@@ -5,7 +5,7 @@ import {
   Building2, Landmark, CheckCircle, AlertCircle, Clock, 
   Search, LogOut, FileText, ChevronRight, User, Phone, 
   Download, Calendar, ShieldCheck, DollarSign, Loader2, X, ArrowLeft, MessageSquare, Copy, Check, Trash2,
-  Eye, EyeOff
+  Eye, EyeOff, ArrowUpRight
 } from "lucide-react";
 import logo from "../assets/logo.jpeg";
 
@@ -37,6 +37,7 @@ export default function Leads() {
   const [isEditingAll, setIsEditingAll] = useState(false);
   const [editFormData, setEditFormData] = useState({});
   const [savingAllDetails, setSavingAllDetails] = useState(false);
+  const [promotingLeadId, setPromotingLeadId] = useState(null);
 
   useEffect(() => {
     if (selectedLead) {
@@ -252,6 +253,44 @@ export default function Leads() {
           showAlert(err.message, "error");
         } finally {
           setDeletingId(null);
+        }
+      }
+    );
+  };
+
+  // Convert/promote incomplete lead to full application (Step 8)
+  const handlePromoteLead = (lead) => {
+    showConfirm(
+      "Convert Lead to Full Application",
+      `Are you sure you want to promote ${lead.fullName}'s lead (Loan ID: ${lead.loanId || lead._id}) to a full application? It will be marked as complete (Step 8: Pending) and moved directly to the main Loans Applications Dashboard so you can review, approve, generate agreement, and trigger disbursal.`,
+      async () => {
+        setPromotingLeadId(lead._id);
+        try {
+          const token = localStorage.getItem("avivaa_dashboard_token");
+          const response = await fetch(`${API_BASE_URL}/loans/${lead._id}/promote-lead`, {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${token}`
+            }
+          });
+
+          if (!response.ok) {
+            const data = await response.json().catch(() => ({}));
+            throw new Error(data.message || "Failed to convert lead to application");
+          }
+
+          // Remove promoted lead from incomplete leads list
+          setLoans(loans.filter(loan => loan._id !== lead._id));
+          setSelectedLead(null);
+          showAlert(
+            `${lead.fullName}'s application has been converted to Step 8! You can now manage, approve, and disburse it directly from the main Applications Dashboard.`,
+            "success"
+          );
+        } catch (err) {
+          showAlert(err.message || "Failed to convert lead", "error");
+        } finally {
+          setPromotingLeadId(null);
         }
       }
     );
@@ -544,12 +583,27 @@ export default function Leads() {
                     </button>
                   </>
                 ) : (
-                  <button
-                    onClick={() => setIsEditingAll(true)}
-                    className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs cursor-pointer transition-colors"
-                  >
-                    Edit All Details
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handlePromoteLead(selectedLead)}
+                      disabled={promotingLeadId === selectedLead._id}
+                      className="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-slate-950 font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-lg shadow-emerald-500/20 cursor-pointer transition-all"
+                      title="Move this lead into the main Loans Applications Dashboard as a completed application"
+                    >
+                      {promotingLeadId === selectedLead._id ? (
+                        <Loader2 size={13} className="animate-spin" />
+                      ) : (
+                        <ArrowUpRight size={14} />
+                      )}
+                      Convert to Full Application
+                    </button>
+                    <button
+                      onClick={() => setIsEditingAll(true)}
+                      className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs cursor-pointer transition-colors"
+                    >
+                      Edit All Details
+                    </button>
+                  </div>
                 )}
                 <button 
                   onClick={() => setSelectedLead(null)}
@@ -1017,12 +1071,26 @@ export default function Leads() {
                     Delete Lead
                   </button>
                 </div>
-                <button
-                  onClick={() => setSelectedLead(null)}
-                  className="w-full sm:w-auto px-6 py-2.5 bg-slate-850 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-bold text-slate-300 transition-colors"
-                >
-                  Close Profile
-                </button>
+                <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+                  <button
+                    onClick={() => handlePromoteLead(selectedLead)}
+                    disabled={promotingLeadId === selectedLead._id}
+                    className="w-full sm:w-auto px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-slate-950 font-black rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 cursor-pointer transition-all"
+                  >
+                    {promotingLeadId === selectedLead._id ? (
+                      <Loader2 size={14} className="animate-spin" />
+                    ) : (
+                      <ArrowUpRight size={14} />
+                    )}
+                    Convert to Full Application
+                  </button>
+                  <button
+                    onClick={() => setSelectedLead(null)}
+                    className="w-full sm:w-auto px-6 py-2.5 bg-slate-850 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-bold text-slate-300 transition-colors cursor-pointer"
+                  >
+                    Close Profile
+                  </button>
+                </div>
               </div>
             </motion.div>
           </div>

@@ -188,6 +188,15 @@ export default function Apply() {
   const [accountHolder, setAccountHolder] = useState("");
   const [bankErrors, setBankErrors] = useState({});
 
+  // Disbursal Bank form real-time validation checks
+  const isAccountHolderValid = Boolean(accountHolder && accountHolder.trim().length >= 2);
+  const isBankSelected = Boolean(
+    selectedBankId && (selectedBankId !== "other" || (otherBankName && otherBankName.trim().length >= 2))
+  );
+  const isAccountNumberValid = Boolean(accountNumber && accountNumber.trim().length >= 8 && /^\d+$/.test(accountNumber.trim()));
+  const isIfscPatternValid = Boolean(ifscCode && /^[A-Z]{4}0[A-Z0-9]{6}$/i.test(ifscCode.trim()));
+  const isBankFormValid = isAccountHolderValid && isBankSelected && isAccountNumberValid && isIfscPatternValid;
+
   // Step 6.5: Modern Awwwards processing loading simulation on submit
   const [isSubmittingApplication, setIsSubmittingApplication] = useState(false);
   const [submitProgress, setSubmitProgress] = useState(0);
@@ -609,10 +618,34 @@ export default function Apply() {
             setLoanAmount(getClosestAmount(loan.loanAmount || 150000));
             setTenure(loan.loanDuration || 24);
             setAccountHolder(loan.bankDetails?.accountHolder || "");
-            setBankName(loan.bankDetails?.bankName || "");
-            setVerifiedBankName(loan.bankDetails?.bankName || "");
+            const restoredBankName = loan.bankDetails?.bankName || "";
+            const restoredIfsc = loan.bankDetails?.ifscCode || "";
+            setBankName(restoredBankName);
+            setVerifiedBankName(restoredBankName);
             setAccountNumber(loan.bankDetails?.accountNumber || "");
-            setIfscCode(loan.bankDetails?.ifscCode || "");
+            setIfscCode(restoredIfsc);
+
+            // Restore selectedBankId so the bank dropdown displays correctly
+            if (restoredBankName) {
+              const matchedByName = INDIAN_BANKS.find(
+                b => b.name && b.name.toLowerCase() === restoredBankName.toLowerCase()
+              );
+              if (matchedByName) {
+                setSelectedBankId(matchedByName.id);
+              } else {
+                setSelectedBankId("other");
+                setOtherBankName(restoredBankName);
+              }
+            } else if (restoredIfsc && restoredIfsc.length >= 4) {
+              const matchedByCode = INDIAN_BANKS.find(
+                b => b.code && restoredIfsc.toUpperCase().startsWith(b.code)
+              );
+              if (matchedByCode) {
+                setSelectedBankId(matchedByCode.id);
+                setBankName(matchedByCode.name);
+                setVerifiedBankName(matchedByCode.name);
+              }
+            }
             setPanFile(loan.kycFiles?.panCard || null);
             setAadhaarFrontFile(loan.kycFiles?.aadhaarFront || null);
             setAadhaarBackFile(loan.kycFiles?.aadhaarBack || null);
@@ -980,6 +1013,7 @@ export default function Apply() {
   // Handle Bank Details submit
   const handleBankSubmit = async (e) => {
     e.preventDefault();
+    if (!isBankFormValid) return;
     const errors = {};
     
     let verifiedBankName = bankName;
@@ -1860,7 +1894,12 @@ export default function Apply() {
                 <button
                   type="button"
                   onClick={handleKycProceed}
-                  className="flex-[2] py-4 bg-brand-navy hover:bg-brand-navy/95 text-white font-bold rounded-2xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer text-sm"
+                  disabled={!panFile || !aadhaarFrontFile || !aadhaarBackFile}
+                  className={`flex-[2] py-4 font-bold rounded-2xl shadow-md transition-all flex items-center justify-center gap-2 text-sm ${
+                    panFile && aadhaarFrontFile && aadhaarBackFile
+                      ? "bg-brand-navy hover:bg-brand-navy/95 text-white cursor-pointer"
+                      : "bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-300 pointer-events-none"
+                  }`}
                 >
                   Proceed to Selfie <ArrowRight size={16} />
                 </button>
@@ -2130,24 +2169,79 @@ export default function Apply() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-widest text-slate-400">Bank IFSC Code *</label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold uppercase tracking-widest text-slate-400">Bank IFSC Code *</label>
+                    {isIfscPatternValid && (
+                      <span className="text-[11px] font-bold text-emerald-600 flex items-center gap-1">
+                        <CheckCircle size={12} /> Valid IFSC
+                      </span>
+                    )}
+                  </div>
                   <input 
                     type="text"
                     required
                     placeholder="SBIN0012345"
                     maxLength={11}
                     value={ifscCode}
-                    onChange={(e) => setIfscCode(e.target.value.toUpperCase().slice(0, 11))}
-                    onBlur={() => {
-                      if (ifscCode.trim()) saveBankDraft({ ifscCode: ifscCode.trim() });
+                    onChange={(e) => {
+                      const val = e.target.value.toUpperCase().slice(0, 11);
+                      setIfscCode(val);
+                      // Auto-detect bank from first 4 characters
+                      if (val.length >= 4) {
+                        const prefix = val.slice(0, 4);
+                        const matchedBank = INDIAN_BANKS.find(b => b.code === prefix);
+                        if (matchedBank) {
+                          setSelectedBankId(matchedBank.id);
+                          setBankName(matchedBank.name);
+                          setVerifiedBankName(matchedBank.name);
+                          setBankErrors(prev => ({ ...prev, bankName: undefined, ifscCode: undefined }));
+                        }
+                      }
                     }}
-                    className={`input-field ${bankErrors.ifscCode ? "border-red-400 bg-red-50/10" : ""}`}
+                    onBlur={() => {
+                      if (ifscCode.trim()) {
+                        saveBankDraft({ ifscCode: ifscCode.trim() });
+                        if (selectedBankId && selectedBankId !== "other") {
+                          const matched = INDIAN_BANKS.find(b => b.id === selectedBankId);
+                          if (matched) saveBankDraft({ ifscCode: ifscCode.trim(), bankName: matched.name });
+                        }
+                      }
+                    }}
+                    className={`input-field font-mono uppercase ${bankErrors.ifscCode ? "border-red-400 bg-red-50/10" : ""}`}
                   />
                   {bankErrors.ifscCode && <p className="text-xs text-red-500 font-semibold">{bankErrors.ifscCode}</p>}
                 </div>
 
+                {/* Missing required fields checklist - prevents submission until resolved */}
+                {!isBankFormValid && (
+                  <div className="p-3.5 bg-amber-500/10 border border-amber-500/20 rounded-2xl text-[11px] space-y-1.5 animate-fadeIn">
+                    <div className="flex items-center gap-1.5 font-bold text-amber-900">
+                      <AlertCircle size={14} className="text-amber-600 shrink-0" />
+                      <span>Complete all required details to activate submission:</span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-[10px] text-amber-800 font-medium pl-1">
+                      <span className={`flex items-center gap-1.5 ${isAccountHolderValid ? "text-emerald-700 font-semibold" : "text-amber-700"}`}>
+                        {isAccountHolderValid ? <CheckCircle size={11} className="text-emerald-600 shrink-0" /> : <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />}
+                        Account Holder Name
+                      </span>
+                      <span className={`flex items-center gap-1.5 ${isBankSelected ? "text-emerald-700 font-semibold" : "text-amber-700"}`}>
+                        {isBankSelected ? <CheckCircle size={11} className="text-emerald-600 shrink-0" /> : <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />}
+                        Select Disbursal Bank
+                      </span>
+                      <span className={`flex items-center gap-1.5 ${isAccountNumberValid ? "text-emerald-700 font-semibold" : "text-amber-700"}`}>
+                        {isAccountNumberValid ? <CheckCircle size={11} className="text-emerald-600 shrink-0" /> : <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />}
+                        Account Number (min 8 digits)
+                      </span>
+                      <span className={`flex items-center gap-1.5 ${isIfscPatternValid ? "text-emerald-700 font-semibold" : "text-amber-700"}`}>
+                        {isIfscPatternValid ? <CheckCircle size={11} className="text-emerald-600 shrink-0" /> : <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />}
+                        11-digit IFSC (e.g. SBIN0004405)
+                      </span>
+                    </div>
+                  </div>
+                )}
+
                 {/* Back & Submit buttons */}
-                <div className="flex flex-col sm:flex-row gap-3 pt-4">
+                <div className="flex flex-col sm:flex-row gap-3 pt-3">
                   <button
                     type="button"
                     onClick={() => setStep(6)}
@@ -2157,7 +2251,12 @@ export default function Apply() {
                   </button>
                   <button 
                     type="submit" 
-                    className="flex-[2] btn-primary !rounded-2xl py-4 flex items-center justify-center gap-2 font-bold cursor-pointer text-sm"
+                    disabled={!isBankFormValid || isSubmittingApplication}
+                    className={`flex-[2] !rounded-2xl py-4 flex items-center justify-center gap-2 font-bold text-sm transition-all duration-300 ${
+                      isBankFormValid && !isSubmittingApplication
+                        ? "btn-primary cursor-pointer shadow-lg shadow-emerald-500/20" 
+                        : "bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-300 pointer-events-none"
+                    }`}
                   >
                     Submit Application <CheckCircle size={16} />
                   </button>
