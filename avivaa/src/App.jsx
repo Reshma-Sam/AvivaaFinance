@@ -10,16 +10,10 @@ import Maintenance from "./pages/Maintenance";
 import NotFound from "./pages/NotFound";
 
 export default function App() {
-  // =========================================================================
-  // TEMPORARY CHANGE: Entire website showing 404 Page Not Found screen.
-  // To restore the website, remove/comment the line below and uncomment the routes.
-  // =========================================================================
-  return <NotFound />;
-
-  /*
   return (
     <Router>
       <Routes>
+        {/* Public Pages with Lenis Smooth Scroll */}
         <Route 
           path="/" 
           element={
@@ -38,16 +32,18 @@ export default function App() {
         />
         <Route path="/apply" element={<Apply />} />
 
+        {/* Admin Pages (Native Scroll) */}
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/dashboard/login" element={<DashboardLogin />} />
+        <Route path="/login" element={<DashboardLogin />} />
         <Route path="/dashboard/leads" element={<Leads />} />
 
+        {/* Dedicated Maintenance Page (if needed) */}
         <Route path="/maintenance" element={<Maintenance />} />
 
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Router>
   );
-  */
 }
 
