@@ -390,12 +390,36 @@ export default function Dashboard() {
     const now = Date.now();
     const elapsedMinutes = (now - startedTime) / (1000 * 60);
     
-    if (elapsedMinutes >= 30) {
-      return "Completed & Disbursed (30m elapsed)";
+    if (loan.withdrawalStatus === 'Failed' || elapsedMinutes >= 30) {
+      return "Disbursal Failed (30m elapsed)";
     } else {
       const remaining = Math.max(0, Math.ceil(30 - elapsedMinutes));
       return `Withdrawal Timer Active (${remaining} min remaining)`;
     }
+  };
+
+  const handleRetryWithdrawal = (loan) => {
+    showConfirm(
+      "Re-queue Disbursal Timer",
+      `Are you sure you want to restart the 30-minute disbursal queue for ${loan.fullName}? This will reset the timer to 30 minutes and set status to Processing.`,
+      async () => {
+        try {
+          const response = await fetch(`${API_BASE_URL}/loans/${loan._id}/retry-withdrawal`, {
+            method: "POST"
+          });
+          if (response.ok) {
+            const updated = await response.json();
+            setLoans(prev => prev.map(l => (l._id === loan._id ? updated : l)));
+            setSelectedLoan(updated);
+            showAlert("30-minute disbursal queue restarted successfully!", "success");
+          } else {
+            showAlert("Failed to restart disbursal queue.", "error");
+          }
+        } catch (err) {
+          showAlert("Error restarting disbursal: " + err.message, "error");
+        }
+      }
+    );
   };
 
   // Promote an incomplete lead directly to complete application (Step 8: Pending)
@@ -1389,13 +1413,27 @@ export default function Dashboard() {
                   <div className="grid md:grid-cols-2 gap-6">
                     <div>
                       <span className="text-[10px] text-slate-500 uppercase font-semibold block">Withdrawal Status</span>
-                      <span className={`text-sm font-bold block mt-1 ${selectedLoan.withdrawalTriggered ? 'text-emerald-400' : 'text-slate-400'}`}>
+                      <span className={`text-sm font-bold block mt-1 ${
+                        selectedLoan.withdrawalStatus === 'Failed' || (selectedLoan.withdrawalTriggered && ((Date.now() - new Date(selectedLoan.withdrawalStartedAt).getTime()) / (1000 * 60) >= 30))
+                          ? 'text-rose-400' 
+                          : selectedLoan.withdrawalTriggered 
+                            ? 'text-amber-400' 
+                            : 'text-slate-400'
+                      }`}>
                         {getWithdrawalStatusText(selectedLoan)}
                       </span>
                       {selectedLoan.withdrawalTriggered && (
-                        <span className="text-[10px] text-slate-505 font-mono block mt-1">
+                        <span className="text-[10px] text-slate-500 font-mono block mt-1">
                           Started at: {new Date(selectedLoan.withdrawalStartedAt).toLocaleString()}
                         </span>
+                      )}
+                      {(selectedLoan.withdrawalStatus === 'Failed' || (selectedLoan.withdrawalTriggered && ((Date.now() - new Date(selectedLoan.withdrawalStartedAt).getTime()) / (1000 * 60) >= 30))) && (
+                        <button
+                          onClick={() => handleRetryWithdrawal(selectedLoan)}
+                          className="mt-2 py-1.5 px-3 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 rounded-lg text-[10px] font-bold flex items-center gap-1.5 cursor-pointer transition-all"
+                        >
+                          <Clock size={12} /> Reset & Re-queue Disbursal (30m)
+                        </button>
                       )}
                     </div>
 

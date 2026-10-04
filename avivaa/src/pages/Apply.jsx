@@ -210,6 +210,7 @@ export default function Apply() {
   const [pollingLoading, setPollingLoading] = useState(false);
   const [showDbPassword, setShowDbPassword] = useState(false);
   const prevStatusRef = useRef(null);
+  const prevWithdrawalStatusRef = useRef(null);
 
   // Request Notification permission when entering step 8
   useEffect(() => {
@@ -278,6 +279,21 @@ export default function Apply() {
             }
           }
 
+          // Trigger notification if withdrawal failed
+          if (loan.withdrawalTriggered) {
+            const startedTime = new Date(loan.withdrawalStartedAt).getTime();
+            const elapsed = Math.floor((Date.now() - startedTime) / 1000);
+            const isFailed = loan.withdrawalStatus === 'Failed' || elapsed >= 30 * 60;
+            if (prevWithdrawalStatusRef.current === 'Processing' && isFailed) {
+              setNotification({
+                title: "❌ Disbursal Failed",
+                message: "Automated payment transfer could not be completed within 30 minutes. Please contact support.",
+                type: "error"
+              });
+            }
+            prevWithdrawalStatusRef.current = isFailed ? 'Failed' : 'Processing';
+          }
+
           prevStatusRef.current = loan.status;
         }
       } catch (err) {
@@ -313,6 +329,13 @@ export default function Apply() {
       setWithdrawalTimeRemaining(remaining);
       if (remaining <= 0) {
         clearInterval(timer);
+        // Instantly re-fetch status from server to sync backend failure status
+        if (mobile) {
+          fetch(`${API_BASE_URL}/loans/status/${mobile}`)
+            .then(res => res.ok && res.json())
+            .then(data => { if (data) setActiveDbLoan(data); })
+            .catch(err => console.warn(err));
+        }
       }
     }, 1000);
 
@@ -2684,7 +2707,7 @@ export default function Apply() {
                     Withdraw Funds Now <ArrowRight size={18} />
                   </button>
                 </div>
-              ) : activeDbLoan.withdrawalTriggered && withdrawalTimeRemaining > 0 ? (
+              ) : activeDbLoan.withdrawalTriggered && withdrawalTimeRemaining > 0 && activeDbLoan.withdrawalStatus !== 'Failed' ? (
                 // --- CASE D: WITHDRAWAL IN PROGRESS (30 MIN TIMER ACTIVE) ---
                 <div>
                   <div className="w-28 h-28 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-8 shadow-inner relative">
@@ -2718,52 +2741,66 @@ export default function Apply() {
                   </div>
                 </div>
               ) : (
-                // --- CASE E: WITHDRAWAL COMPLETED & SUCCESSFUL (30 MIN COMPLETED) ---
+                // --- CASE E: WITHDRAWAL FAILED (30 MIN ELAPSED / GATEWAY TIMEOUT) ---
                 <div>
-                  <div className="w-24 h-24 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-8 shadow-inner relative">
-                    <CheckCircle size={56} className="text-brand-green animate-[bounce_1.5s_infinite]" />
-                    <div className="absolute inset-0 rounded-full bg-brand-green/20 -z-10 animate-ping" />
+                  <div className="w-24 h-24 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-8 shadow-inner relative">
+                    <AlertCircle size={56} className="text-red-500 animate-[bounce_1.5s_infinite]" />
+                    <div className="absolute inset-0 rounded-full bg-red-500/20 -z-10 animate-ping" />
                   </div>
 
-                  <h2 className="text-3xl font-display font-black text-brand-navy mb-2">Disbursed Successfully!</h2>
-                  <p className="text-brand-green font-black text-xl uppercase tracking-wider mb-6">
-                    Payment Credited
+                  <h2 className="text-3xl font-display font-black text-brand-navy mb-2">Disbursal Failed</h2>
+                  <p className="text-red-500 font-black text-xl uppercase tracking-wider mb-6">
+                    Payment Failed
                   </p>
 
-                  <div className="bg-slate-50 rounded-2xl p-6 border border-slate-100/50 mb-8 text-left space-y-4">
+                  <div className="bg-red-50/40 rounded-2xl p-6 border border-red-100/80 mb-8 text-left space-y-4">
                     <div className="flex items-start gap-3">
-                      <div className="w-5 h-5 rounded-full bg-brand-green/20 flex items-center justify-center text-brand-green shrink-0 mt-0.5">
-                        <Check size={12} className="stroke-[3]" />
+                      <div className="w-5 h-5 rounded-full bg-red-100 flex items-center justify-center text-red-600 shrink-0 mt-0.5">
+                        <X size={12} className="stroke-[3]" />
                       </div>
-                      <p className="text-xs font-semibold text-slate-600">
-                        Funds of <strong className="text-brand-navy">₹{activeDbLoan.loanAmount.toLocaleString("en-IN")}</strong> have been successfully transferred to your account ending in <strong className="text-brand-navy">*{activeDbLoan.bankDetails.accountNumber.slice(-4)}</strong>.
+                      <p className="text-xs font-semibold text-slate-700 leading-relaxed">
+                        Automated transfer of <strong className="text-brand-navy">₹{activeDbLoan.loanAmount.toLocaleString("en-IN")}</strong> to your bank account ending in <strong className="text-brand-navy">*{activeDbLoan.bankDetails?.accountNumber ? activeDbLoan.bankDetails.accountNumber.slice(-4) : '••••'}</strong> could not be completed.
                       </p>
                     </div>
 
                     <div className="flex items-start gap-3">
-                      <div className="w-5 h-5 rounded-full bg-brand-green/20 flex items-center justify-center text-brand-green shrink-0 mt-0.5">
-                        <Check size={12} className="stroke-[3]" />
+                      <div className="w-5 h-5 rounded-full bg-red-100 flex items-center justify-center text-red-600 shrink-0 mt-0.5">
+                        <AlertCircle size={12} className="stroke-[3]" />
                       </div>
-                      <p className="text-xs font-semibold text-slate-600">
-                        You can download your underwriter-signed loan agreement document directly below.
+                      <p className="text-xs font-semibold text-slate-700 leading-relaxed">
+                        {activeDbLoan.withdrawalFailureReason || "Automated payment clearing timed out after the 30-minute queue. The banking corridor did not receive gateway confirmation."}
+                      </p>
+                    </div>
+
+                    <div className="flex items-start gap-3">
+                      <div className="w-5 h-5 rounded-full bg-red-100 flex items-center justify-center text-red-600 shrink-0 mt-0.5">
+                        <ShieldCheck size={12} className="stroke-[3]" />
+                      </div>
+                      <p className="text-xs font-semibold text-slate-700 leading-relaxed">
+                        Your pre-approved loan of <strong className="text-brand-navy">₹{activeDbLoan.loanAmount.toLocaleString("en-IN")}</strong> remains safe and reserved in your profile. Please contact our underwriting support to verify bank coordinates and release your funds.
                       </p>
                     </div>
                   </div>
 
-                  {activeDbLoan.adminPdf ? (
+                  <div className="space-y-3 mb-6">
+                    <a
+                      href={`https://wa.me/919077321430?text=${encodeURIComponent(`Hello Avivaa Support, my loan disbursal failed after the 30-minute queue. Loan ID: ${activeDbLoan.loanId || ''}, Name: ${activeDbLoan.fullName || ''}`)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full bg-[#25D366] hover:bg-[#20bd5a] text-white font-extrabold py-4 px-6 rounded-2xl shadow-xl hover:shadow-2xl active:scale-98 transition-all flex items-center justify-center gap-2 text-base cursor-pointer"
+                    >
+                      <MessageCircle size={20} /> Contact Support on WhatsApp
+                    </a>
+                  </div>
+
+                  {activeDbLoan.adminPdf && (
                     <a
                       href={`${API_BASE_URL}/loans/${activeDbLoan._id}/pdf-proxy`}
                       download={activeDbLoan.adminPdf.name || "loan-agreement.pdf"}
-                      className="w-full bg-brand-navy text-white hover:bg-brand-navy/90 font-extrabold py-4 px-6 rounded-2xl shadow-xl hover:shadow-2xl active:scale-98 transition-all flex items-center justify-center gap-2 text-base cursor-pointer mb-6"
+                      className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3.5 px-6 rounded-2xl transition-all flex items-center justify-center gap-2 text-xs cursor-pointer mb-6"
                     >
-                      <Download size={20} /> Download Loan Agreement (PDF)
+                      <Download size={16} /> Download Sanction Agreement (PDF)
                     </a>
-                  ) : (
-
-                    <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-semibold text-slate-500 mb-6 flex items-center justify-center gap-2">
-                      <Loader2 size={14} className="animate-spin text-slate-400" />
-                      Waiting for finalized loan agreement signature...
-                    </div>
                   )}
                 </div>
               )}

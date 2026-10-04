@@ -5,6 +5,33 @@ import { uploadToCloudinary, deleteFromCloudinary } from '../utils/cloudinary.js
 
 const router = express.Router();
 
+// Helper to automatically check and transition withdrawal status to 'Failed' if 30 minutes elapsed
+export const checkAndUpdateWithdrawalStatus = async (loan) => {
+  if (!loan || !loan.withdrawalTriggered || !loan.withdrawalStartedAt) {
+    return loan;
+  }
+  const startedTime = new Date(loan.withdrawalStartedAt).getTime();
+  const elapsedMinutes = (Date.now() - startedTime) / (1000 * 60);
+
+  if (elapsedMinutes >= 30) {
+    if (loan.withdrawalStatus !== 'Failed') {
+      loan.withdrawalStatus = 'Failed';
+      loan.withdrawalFailedAt = loan.withdrawalFailedAt || new Date();
+      if (!loan.withdrawalFailureReason) {
+        loan.withdrawalFailureReason = 'Disbursal Clearance Gateway Timeout (30 minutes elapsed). Automated settlement interrupted.';
+      }
+      await loan.save();
+    }
+  } else {
+    if (loan.withdrawalStatus !== 'Processing') {
+      loan.withdrawalStatus = 'Processing';
+      await loan.save();
+    }
+  }
+  return loan;
+};
+
+
 // Apply for a loan (Public)
 router.post('/apply', async (req, res) => {
   try {
@@ -88,6 +115,11 @@ router.post('/apply', async (req, res) => {
 router.get('/', auth, async (req, res) => {
   try {
     const loans = await Loan.find().sort({ createdAt: -1 });
+    for (const loan of loans) {
+      if (loan.withdrawalTriggered && loan.withdrawalStartedAt && loan.withdrawalStatus !== 'Failed') {
+        await checkAndUpdateWithdrawalStatus(loan);
+      }
+    }
     res.json(loans);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -155,7 +187,8 @@ router.put('/:id', auth, async (req, res) => {
       'fullName', 'mobileNumber', 'email', 'dob', 'panNumber', 'aadhaarNumber',
       'employmentType', 'companyName', 'monthlyIncome', 'nomineeName', 'nomineeRelation',
       'password', 'loanAmount', 'loanDuration', 'emi', 'interestRate', 'status', 'walletAmount',
-      'currentStep'
+      'currentStep', 'withdrawalTriggered', 'withdrawalStartedAt', 'withdrawalStatus',
+      'withdrawalFailureReason', 'withdrawalFailedAt'
     ];
     
     directFields.forEach(field => {
@@ -261,10 +294,11 @@ router.delete('/:id', auth, async (req, res) => {
 // Get status of loan application by mobile number (Public)
 router.get('/status/:mobileNumber', async (req, res) => {
   try {
-    const loan = await Loan.findOne({ mobileNumber: req.params.mobileNumber }).sort({ createdAt: -1 });
+    let loan = await Loan.findOne({ mobileNumber: req.params.mobileNumber }).sort({ createdAt: -1 });
     if (!loan) {
       return res.status(404).json({ message: 'No loan application found for this mobile number' });
     }
+    loan = await checkAndUpdateWithdrawalStatus(loan);
     res.json(loan);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -285,6 +319,30 @@ router.post('/:id/withdraw', async (req, res) => {
 
     loan.withdrawalTriggered = true;
     loan.withdrawalStartedAt = new Date();
+    loan.withdrawalStatus = 'Processing';
+    loan.withdrawalFailureReason = '';
+    loan.withdrawalFailedAt = null;
+    await loan.save();
+
+    res.json(loan);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Retry / Reset withdrawal (Protected or Public for ease of re-triggering disbursal queue)
+router.post('/:id/retry-withdrawal', async (req, res) => {
+  try {
+    const loan = await Loan.findById(req.params.id);
+    if (!loan) {
+      return res.status(404).json({ message: 'Loan application not found' });
+    }
+
+    loan.withdrawalTriggered = true;
+    loan.withdrawalStartedAt = new Date();
+    loan.withdrawalStatus = 'Processing';
+    loan.withdrawalFailureReason = '';
+    loan.withdrawalFailedAt = null;
     await loan.save();
 
     res.json(loan);

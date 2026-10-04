@@ -97,6 +97,18 @@ const loanSchema = new mongoose.Schema({
   withdrawalStartedAt: {
     type: Date
   },
+  withdrawalStatus: {
+    type: String,
+    enum: ['Not Initiated', 'Processing', 'Failed', 'Completed'],
+    default: 'Not Initiated'
+  },
+  withdrawalFailureReason: {
+    type: String,
+    default: ''
+  },
+  withdrawalFailedAt: {
+    type: Date
+  },
   password: {
     type: String
   },
