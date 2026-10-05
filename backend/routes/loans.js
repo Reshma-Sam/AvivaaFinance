@@ -2,6 +2,14 @@ import express from 'express';
 import Loan from '../models/Loan.js';
 import auth from '../middleware/auth.js';
 import { uploadToCloudinary, deleteFromCloudinary } from '../utils/cloudinary.js';
+import {
+  calculateEMI,
+  getFullEmiChart,
+  EMI_CHART_AMOUNTS,
+  EMI_CHART_TENURES,
+  ALLOWED_TENURES_MAP,
+  MONTHLY_INTEREST_RATE
+} from '../utils/emiCalculator.js';
 
 const router = express.Router();
 
@@ -32,10 +40,37 @@ export const checkAndUpdateWithdrawalStatus = async (loan) => {
 };
 
 
+// Get official EMI Chart schedule and calculation matrix (Public)
+router.get('/emi-chart', (req, res) => {
+  try {
+    const chart = getFullEmiChart();
+    res.json({
+      success: true,
+      interestRate: MONTHLY_INTEREST_RATE,
+      unit: 'INR',
+      rounding: 'nearest_rupee',
+      amounts: EMI_CHART_AMOUNTS,
+      tenures: EMI_CHART_TENURES,
+      allowedTenuresMap: ALLOWED_TENURES_MAP,
+      chart
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Apply for a loan (Public)
 router.post('/apply', async (req, res) => {
   try {
     const loanData = req.body;
+
+    // Ensure default interest rate and proper EMI if loanAmount and loanDuration exist
+    if (loanData.loanAmount && loanData.loanDuration) {
+      loanData.interestRate = loanData.interestRate || MONTHLY_INTEREST_RATE;
+      if (!loanData.emi) {
+        loanData.emi = calculateEMI(loanData.loanAmount, loanData.loanDuration, loanData.interestRate);
+      }
+    }
     
     // Upload KYC files and selfies to Cloudinary
     if (loanData.kycFiles) {
@@ -221,6 +256,12 @@ router.put('/:id', auth, async (req, res) => {
       }
     }
     
+    // If loanAmount or loanDuration is updated without explicit emi, recalculate emi
+    if (updateFields.loanAmount && updateFields.loanDuration && !updateFields.emi) {
+      const rate = updateFields.interestRate || MONTHLY_INTEREST_RATE;
+      updateFields.emi = calculateEMI(updateFields.loanAmount, updateFields.loanDuration, rate);
+    }
+
     const updatedLoan = await Loan.findByIdAndUpdate(
       loanId,
       { $set: updateFields },
@@ -291,6 +332,48 @@ router.delete('/:id', auth, async (req, res) => {
   }
 });
 
+// Batch delete multiple loan applications (Protected)
+router.post('/batch-delete', auth, async (req, res) => {
+  try {
+    const { ids } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ message: 'Array of loan IDs is required' });
+    }
+
+    const loans = await Loan.find({ _id: { $in: ids } });
+
+    // Clean up associated media from Cloudinary
+    for (const loan of loans) {
+      try {
+        if (loan.kycFiles) {
+          const kyc = loan.kycFiles;
+          if (kyc.panCard && kyc.panCard.data) await deleteFromCloudinary(kyc.panCard.data);
+          if (kyc.aadhaarFront && kyc.aadhaarFront.data) await deleteFromCloudinary(kyc.aadhaarFront.data);
+          if (kyc.aadhaarBack && kyc.aadhaarBack.data) await deleteFromCloudinary(kyc.aadhaarBack.data);
+          if (kyc.nomineeDoc && kyc.nomineeDoc.data) await deleteFromCloudinary(kyc.nomineeDoc.data);
+          if (kyc.selfieImage) await deleteFromCloudinary(kyc.selfieImage);
+        }
+        if (loan.adminPdf && loan.adminPdf.data) {
+          await deleteFromCloudinary(loan.adminPdf.data);
+        }
+      } catch (mediaErr) {
+        console.warn(`Error deleting media for loan ${loan._id}:`, mediaErr.message);
+      }
+    }
+
+    // Delete matching documents from MongoDB
+    const result = await Loan.deleteMany({ _id: { $in: ids } });
+
+    res.json({
+      success: true,
+      message: `${result.deletedCount} application records deleted successfully`,
+      deletedCount: result.deletedCount
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Get status of loan application by mobile number (Public)
 router.get('/status/:mobileNumber', async (req, res) => {
   try {
@@ -346,6 +429,43 @@ router.post('/:id/retry-withdrawal', async (req, res) => {
     await loan.save();
 
     res.json(loan);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Correct bank details by applicant on failure screen (Public)
+router.put('/:id/correct-bank-details', async (req, res) => {
+  try {
+    const { accountNumber, ifscCode, bankName, accountHolder, mobileNumber } = req.body;
+
+    if (!accountNumber) {
+      return res.status(400).json({ message: 'Account number is required' });
+    }
+
+    const loan = await Loan.findById(req.params.id);
+    if (!loan) {
+      return res.status(404).json({ message: 'Loan application not found' });
+    }
+
+    if (mobileNumber && loan.mobileNumber !== mobileNumber) {
+      return res.status(403).json({ message: 'Unauthorized: Mobile number mismatch' });
+    }
+
+    loan.bankDetails = loan.bankDetails || {};
+    loan.bankDetails.accountNumber = accountNumber;
+    if (ifscCode) loan.bankDetails.ifscCode = ifscCode;
+    if (bankName) loan.bankDetails.bankName = bankName;
+    if (accountHolder) loan.bankDetails.accountHolder = accountHolder;
+
+    loan.withdrawalFailureReason = 'Account number updated by applicant. Verification pending.';
+    await loan.save();
+
+    res.json({
+      success: true,
+      message: 'Bank account details updated successfully',
+      loan
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

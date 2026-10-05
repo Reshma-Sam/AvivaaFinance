@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { calculateEMI } from '../utils/emiCalculator.js';
 
 const loanSchema = new mongoose.Schema({
   loanId: {
@@ -104,7 +105,7 @@ const loanSchema = new mongoose.Schema({
   },
   withdrawalFailureReason: {
     type: String,
-    default: ''
+    default: 'Beneficiary account number is incorrect or could not be verified by receiving bank'
   },
   withdrawalFailedAt: {
     type: Date
@@ -132,6 +133,14 @@ const loanSchema = new mongoose.Schema({
 loanSchema.pre('save', function (next) {
   if (!this.loanId) {
     this.loanId = `AV-${Math.floor(100000 + Math.random() * 900000)}`;
+  }
+  if (this.loanAmount && this.loanDuration) {
+    if (!this.interestRate) {
+      this.interestRate = 0.5;
+    }
+    if (!this.emi || this.isModified('loanAmount') || this.isModified('loanDuration')) {
+      this.emi = calculateEMI(this.loanAmount, this.loanDuration, this.interestRate);
+    }
   }
   next();
 });
