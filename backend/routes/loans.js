@@ -149,7 +149,7 @@ router.post('/apply', async (req, res) => {
 // Get all loan applications (Protected)
 router.get('/', auth, async (req, res) => {
   try {
-    const loans = await Loan.find().sort({ createdAt: -1 });
+    const loans = await Loan.find().sort({ createdAt: -1 }).allowDiskUse(true);
     for (const loan of loans) {
       if (loan.withdrawalTriggered && loan.withdrawalStartedAt && loan.withdrawalStatus !== 'Failed') {
         await checkAndUpdateWithdrawalStatus(loan);
