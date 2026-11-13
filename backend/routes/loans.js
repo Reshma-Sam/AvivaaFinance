@@ -150,9 +150,9 @@ router.post('/apply', async (req, res) => {
 // Get all loan applications (Protected - optimized for fast dashboard sync)
 router.get('/', auth, async (req, res) => {
   try {
-    // 1. Bulk update expired 30-minute disbursals in a single atomic database query
+    // 1. Bulk update expired 30-minute disbursals asynchronously in background (never blocks read)
     const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
-    await Loan.updateMany(
+    Loan.updateMany(
       {
         withdrawalTriggered: true,
         withdrawalStatus: { $nin: ['Failed', 'Completed'] },
@@ -165,7 +165,7 @@ router.get('/', auth, async (req, res) => {
           withdrawalFailureReason: 'Disbursal Clearance Gateway Timeout (30 minutes elapsed). Automated settlement interrupted.'
         }
       }
-    );
+    ).catch(err => console.error('Background disbursal update error:', err.message));
 
     // 2. Fetch loans excluding massive embedded Base64 KYC and PDF payloads (reduces response from ~65MB to ~400KB)
     const loans = await Loan.find({}, {
