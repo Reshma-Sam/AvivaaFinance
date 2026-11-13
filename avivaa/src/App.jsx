@@ -13,7 +13,10 @@ export default function App() {
   return (
     <Router>
       <Routes>
-        {/* Public Pages with Lenis Smooth Scroll */}
+        {/* Landing Page (Showing 404 Page Not Found screen) */}
+        <Route path="/" element={<NotFound />} />
+
+        {/* To restore original landing page, uncomment below and comment the Route above:
         <Route 
           path="/" 
           element={
@@ -22,6 +25,9 @@ export default function App() {
             </ReactLenis>
           } 
         />
+        */}
+
+        {/* Public Pages with Lenis Smooth Scroll */}
         <Route 
           path="/our-journey" 
           element={
@@ -46,4 +52,3 @@ export default function App() {
     </Router>
   );
 }
-
