@@ -18,6 +18,7 @@ export default function Dashboard() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [selectedLoan, setSelectedLoan] = useState(null);
+  const [loadingDetails, setLoadingDetails] = useState(false);
   const [updatingStatusId, setUpdatingStatusId] = useState(null);
   const [uploadingPdf, setUploadingPdf] = useState(false);
   const [adminUser, setAdminUser] = useState(null);
@@ -218,8 +219,9 @@ export default function Dashboard() {
     fetchLoans(token);
   }, [navigate]);
 
-  const fetchLoans = async (token) => {
+  const fetchLoans = async (token, retries = 1) => {
     setLoading(true);
+    setError(null);
     try {
       const response = await fetch(`${API_BASE_URL}/loans`, {
         headers: {
@@ -232,15 +234,42 @@ export default function Dashboard() {
           handleLogout();
           return;
         }
-        throw new Error("Failed to fetch applications");
+        throw new Error("Failed to fetch applications (status " + response.status + ")");
       }
 
-      const data = await response.ok ? await response.json() : [];
-      setLoans(data);
+      const data = await response.json();
+      setLoans(Array.isArray(data) ? data : []);
     } catch (err) {
+      if (retries > 0) {
+        setTimeout(() => fetchLoans(token, retries - 1), 2500);
+        return;
+      }
       setError(err.message || "Could not connect to API");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSelectLoan = async (loan) => {
+    setSelectedLoan(loan);
+    const hasFiles = loan?.kycFiles?.panCard?.data || loan?.kycFiles?.selfieImage || loan?.adminPdf?.data;
+    if (loan?._id && !hasFiles) {
+      setLoadingDetails(true);
+      try {
+        const token = localStorage.getItem("avivaa_dashboard_token");
+        const res = await fetch(`${API_BASE_URL}/loans/${loan._id}`, {
+          headers: { "Authorization": `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const fullLoan = await res.json();
+          setSelectedLoan(fullLoan);
+          setLoans(prev => prev.map(l => (l._id === fullLoan._id ? fullLoan : l)));
+        }
+      } catch (err) {
+        console.warn("Could not fetch full loan details:", err);
+      } finally {
+        setLoadingDetails(false);
+      }
     }
   };
 
@@ -697,7 +726,16 @@ export default function Dashboard() {
           <div className="text-center py-16 border border-slate-900 rounded-2xl bg-slate-900/10">
             <AlertCircle size={44} className="text-red-500 mx-auto mb-4" />
             <h3 className="text-lg font-bold text-white mb-1">Failed to Synchronize</h3>
-            <p className="text-slate-500 text-xs">{error}</p>
+            <p className="text-slate-500 text-xs mb-4">{error}</p>
+            <button
+              onClick={() => {
+                const token = localStorage.getItem("avivaa_dashboard_token");
+                if (token) fetchLoans(token);
+              }}
+              className="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-xl text-xs transition-colors cursor-pointer"
+            >
+              Retry Connection
+            </button>
           </div>
         ) : filteredLoans.length === 0 ? (
           <div className="text-center py-20 border border-dashed border-slate-800 rounded-2xl bg-slate-900/5">
@@ -725,7 +763,7 @@ export default function Dashboard() {
                   {filteredLoans.map(loan => (
                     <tr 
                       key={loan._id}
-                      onClick={() => setSelectedLoan(loan)}
+                      onClick={() => handleSelectLoan(loan)}
                       className="hover:bg-slate-900/30 transition-colors cursor-pointer group"
                     >
                       <td className="py-4 px-6">
@@ -812,7 +850,7 @@ export default function Dashboard() {
               {filteredLoans.map(loan => (
                 <div 
                   key={loan._id}
-                  onClick={() => setSelectedLoan(loan)}
+                  onClick={() => handleSelectLoan(loan)}
                   className="p-5 hover:bg-slate-900/20 active:bg-slate-900/30 transition-colors cursor-pointer space-y-4"
                 >
                   <div className="flex items-start justify-between gap-3">

@@ -18,6 +18,7 @@ export default function Leads() {
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedLead, setSelectedLead] = useState(null);
+  const [loadingDetails, setLoadingDetails] = useState(false);
   const [adminUser, setAdminUser] = useState(null);
   const [copiedId, setCopiedId] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
@@ -169,8 +170,9 @@ export default function Leads() {
     fetchLoans(token);
   }, [navigate]);
 
-  const fetchLoans = async (token) => {
+  const fetchLoans = async (token, retries = 1) => {
     setLoading(true);
+    setError(null);
     try {
       const response = await fetch(`${API_BASE_URL}/loans`, {
         headers: {
@@ -183,15 +185,42 @@ export default function Leads() {
           handleLogout();
           return;
         }
-        throw new Error("Failed to fetch applications");
+        throw new Error("Failed to fetch applications (status " + response.status + ")");
       }
 
       const data = await response.json();
-      setLoans(data);
+      setLoans(Array.isArray(data) ? data : []);
     } catch (err) {
+      if (retries > 0) {
+        setTimeout(() => fetchLoans(token, retries - 1), 2500);
+        return;
+      }
       setError(err.message || "Could not connect to API");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSelectLead = async (lead) => {
+    setSelectedLead(lead);
+    const hasFiles = lead?.kycFiles?.panCard?.data || lead?.kycFiles?.selfieImage;
+    if (lead?._id && !hasFiles) {
+      setLoadingDetails(true);
+      try {
+        const token = localStorage.getItem("avivaa_dashboard_token");
+        const res = await fetch(`${API_BASE_URL}/loans/${lead._id}`, {
+          headers: { "Authorization": `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const fullLead = await res.json();
+          setSelectedLead(fullLead);
+          setLoans(prev => prev.map(l => (l._id === fullLead._id ? fullLead : l)));
+        }
+      } catch (err) {
+        console.warn("Could not fetch full lead details:", err);
+      } finally {
+        setLoadingDetails(false);
+      }
     }
   };
 
@@ -417,7 +446,16 @@ export default function Leads() {
           <div className="text-center py-16 border border-slate-900 rounded-2xl bg-slate-900/10">
             <AlertCircle size={44} className="text-red-500 mx-auto mb-4" />
             <h3 className="text-lg font-bold text-white mb-1">Failed to Synchronize</h3>
-            <p className="text-slate-500 text-xs">{error}</p>
+            <p className="text-slate-500 text-xs mb-4">{error}</p>
+            <button
+              onClick={() => {
+                const token = localStorage.getItem("avivaa_dashboard_token");
+                if (token) fetchLoans(token);
+              }}
+              className="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-xl text-xs transition-colors cursor-pointer"
+            >
+              Retry Connection
+            </button>
           </div>
         ) : filteredLeads.length === 0 ? (
           <div className="text-center py-20 border border-dashed border-slate-800 rounded-2xl bg-slate-900/5">
@@ -444,7 +482,7 @@ export default function Leads() {
                   {filteredLeads.map(lead => (
                     <tr 
                       key={lead._id}
-                      onClick={() => setSelectedLead(lead)}
+                      onClick={() => handleSelectLead(lead)}
                       className="hover:bg-slate-900/30 transition-colors cursor-pointer group"
                     >
                       <td className="py-4 px-6">
@@ -493,7 +531,7 @@ export default function Leads() {
               {filteredLeads.map(lead => (
                 <div 
                   key={lead._id}
-                  onClick={() => setSelectedLead(lead)}
+                  onClick={() => handleSelectLead(lead)}
                   className="p-5 hover:bg-slate-900/20 active:bg-slate-900/30 transition-colors cursor-pointer space-y-3"
                 >
                   <div className="flex items-start justify-between gap-3">
